@@ -1,24 +1,33 @@
-# Connect Your Repo
+Your Self inside,
+maximized outside.
+Organize your life into Circles — one continuous Personal Circle and as many Work Circles as you need. Self Maximizer sorts what matters into the right Circle and hands every AI the context to show up as your best self.
 
-How can I connect a GitHub repository for you to assess?
+Start 3-day free trial
+See how it works
+Card required. Cancel anytime. Then $9.95/month.
 
-This project was built with [Lovable](https://lovable.dev).
+Your relationships — AI, work, or personal — mapped out and executable in every way.
+Chat transcripts, emails, and text messages all ingest the same way — paste them in and Self Maximizer sorts what matters. Then export as a system prompt, an email prompt, or a text-message prompt — tuned to how each channel actually reads.
 
-## Build with Lovable
+Kindness-first tone
+Works with every AI
+You control what's shared
+Your memory. Your way. Sorted automatically.
+Automatic sorting
+Paste a conversation — even a long transcript. Our AI pulls out what's worth remembering and files each item under Personal/Family or Work/Project.
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/03274807-1cfe-45da-bc59-539adaadeada).
+Cloud-private backup
+Every memory is stored encrypted in your private bucket. Only you can read it. Row-level security at the database level — no shared tenants.
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+Privacy pause
+One click stops all recording. Anything you say while paused is never stored — not hidden, never written down.
 
-## Development
+Multiple projects
+Keep separate Work/Project buckets — one per client, venture, or job — so work memories don't blur together.
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+Copy system prompt
+One button puts your whole context on the clipboard, formatted for any chat. Or export the full MEMORY.md file.
 
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+Lifecycle triage
+Work projects that go quiet for 90 days surface a health summary. Personal is continuous — never triaged, never archived automatically.
 ```
