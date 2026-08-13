@@ -1,0 +1,6 @@
+{
+  "name": "self-maxizer-app",
+  "description": "Personal knowledge and memory management system with notes, memories map, projects, and templates.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

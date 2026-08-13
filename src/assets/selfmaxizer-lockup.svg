@@ -1,0 +1,26 @@
+<svg width="620" height="140" viewBox="0 0 620 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="SelfMaxizer">
+  <g transform="translate(0,14)">
+    <rect width="112" height="112" rx="26" fill="#f0806a"></rect>
+    <g transform="translate(0,0)">
+      <g stroke="#ffffff" stroke-width="15" stroke-linecap="round" opacity="0.55" transform="scale(0.21875)">
+        <line x1="256" y1="256" x2="140" y2="150"></line>
+        <line x1="256" y1="256" x2="386" y2="150"></line>
+        <line x1="256" y1="256" x2="130" y2="330"></line>
+        <line x1="256" y1="256" x2="380" y2="356"></line>
+        <line x1="256" y1="256" x2="256" y2="405"></line>
+      </g>
+      <g transform="scale(0.21875)">
+        <circle cx="140" cy="150" r="34" fill="#ffffff"></circle>
+        <circle cx="386" cy="150" r="34" fill="#ffffff"></circle>
+        <circle cx="130" cy="330" r="34" fill="#ffffff"></circle>
+        <circle cx="380" cy="356" r="34" fill="#ffffff"></circle>
+        <circle cx="256" cy="405" r="34" fill="#ffffff"></circle>
+        <circle cx="256" cy="256" r="58" fill="#ffffff"></circle>
+        <circle cx="256" cy="256" r="30" fill="#f0806a"></circle>
+      </g>
+    </g>
+  </g>
+  <text x="140" y="92" font-family="Nunito, system-ui, sans-serif" font-size="58" letter-spacing="-0.5">
+    <tspan font-weight="800" fill="#2a2320">Self</tspan><tspan font-weight="900" fill="#f0806a">Maxizer</tspan>
+  </text>
+</svg>

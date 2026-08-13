@@ -1,0 +1,50 @@
+{
+  "name": "Self Maximizer",
+  "short_name": "Self Maximizer",
+  "description": "Your Self inside, maximized outside — one memory for every AI.",
+  "id": "/",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#f0806a",
+  "categories": ["productivity", "utilities"],
+  "shortcuts": [
+    {
+      "name": "Note to self",
+      "short_name": "Note",
+      "description": "Tap and talk — save a quick reminder without opening the app.",
+      "url": "/note?mic=1",
+      "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ],
+  "share_target": {
+    "action": "/note",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text"
+    }
+  },
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

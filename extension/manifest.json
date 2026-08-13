@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "Self Maximizer",
+  "version": "0.1.0",
+  "description": "Capture chats, emails, and texts from any page and send them to Self Maximizer for AI sorting into personal and work memories.",
+  "permissions": ["activeTab", "storage", "contextMenus", "scripting", "clipboardWrite"],
+  "_comment_permissions": "activeTab only: the extension can read a page ONLY when you click the toolbar button or use its context-menu item. It has no standing access to your browsing. host_permissions is limited to the Self Maximizer app itself so captured text can be handed to your dashboard tab.",
+  "host_permissions": ["https://circlesapp.co/*", "https://*.lovable.app/*"],
+  "optional_host_permissions": ["https://*/*", "http://*/*"],
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Self Maximizer",
+    "default_icon": {
+      "48": "icon-48.png",
+      "128": "icon-128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "48": "icon-48.png",
+    "128": "icon-128.png",
+    "512": "icon-512.png"
+  }
+}

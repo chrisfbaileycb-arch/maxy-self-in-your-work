@@ -1,0 +1,2 @@
+ALTER TABLE public.identity_tokens ADD COLUMN IF NOT EXISTS expires_at timestamptz;
+UPDATE public.identity_tokens SET expires_at = created_at + interval '30 days' WHERE expires_at IS NULL AND revoked_at IS NULL;

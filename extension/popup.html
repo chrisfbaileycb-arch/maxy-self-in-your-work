@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Self Maximizer</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <img src="icon-48.png" width="28" height="28" alt="" />
+      <div>
+        <div class="title">Self Maximizer</div>
+        <div class="sub">Capture &amp; sort</div>
+      </div>
+    </header>
+
+    <p class="hint">
+      Highlight a chat, email, or text on this page — or send the whole page — and we'll route it
+      into your working buckets.
+    </p>
+
+    <div class="row">
+      <button data-source="chat">Send as chat</button>
+      <button data-source="email">Send as email</button>
+      <button data-source="text">Send as text</button>
+    </div>
+
+    <div class="status" id="status"></div>
+
+    <button id="note-to-self" class="secondary">Note to self →</button>
+
+    <details>
+      <summary>Settings</summary>
+      <label>
+        App URL
+        <input id="origin" type="url" placeholder="https://circlesapp.co" />
+      </label>
+      <button id="save-origin" class="secondary">Save</button>
+    </details>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
