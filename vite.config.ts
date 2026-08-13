@@ -6,6 +6,16 @@ import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import { nitro } from "nitro/vite";
 
 export default defineConfig({
+  server: {
+    host: "0.0.0.0",
+    port: 3000,
+    strictPort: true,
+  },
+  preview: {
+    host: "0.0.0.0",
+    port: 3000,
+    strictPort: true,
+  },
   plugins: [
     tailwindcss(),
     tsconfigPaths({ projects: ["./tsconfig.json"] }),
@@ -14,11 +24,6 @@ export default defineConfig({
     }),
     nitro({
       preset: "node-server",
-      output: {
-        dir: ".output",
-        serverDir: ".output/server",
-        publicDir: ".output/public",
-      },
     }),
     react(),
   ],
