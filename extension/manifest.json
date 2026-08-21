@@ -1,16 +1,33 @@
 {
   "manifest_version": 3,
-  "name": "Self Maximizer",
-  "version": "0.1.0",
-  "description": "Capture chats, emails, and texts from any page and send them to Self Maximizer for AI sorting into personal and work memories.",
-  "permissions": ["activeTab", "storage", "contextMenus", "scripting", "clipboardWrite"],
-  "_comment_permissions": "activeTab only: the extension can read a page ONLY when you click the toolbar button or use its context-menu item. It has no standing access to your browsing. host_permissions is limited to the Self Maximizer app itself so captured text can be handed to your dashboard tab.",
-  "host_permissions": ["https://circlesapp.co/*", "https://*.lovable.app/*"],
-  "optional_host_permissions": ["https://*/*", "http://*/*"],
-
+  "name": "SelfMax Capsule Assistant",
+  "version": "1.1.0",
+  "description": "Zero-API-key AI assistant for email draft refactoring, SMS conversion, and memory capture using Web Sessions, Local LLMs, and custom keys.",
+  "permissions": [
+    "cookies",
+    "declarativeNetRequest",
+    "storage",
+    "activeTab",
+    "contextMenus",
+    "scripting",
+    "clipboardWrite"
+  ],
+  "host_permissions": [
+    "https://chatgpt.com/*",
+    "https://claude.ai/*",
+    "https://gemini.google.com/*",
+    "https://mail.google.com/*",
+    "https://outlook.live.com/*",
+    "https://outlook.office.com/*",
+    "http://localhost:1234/*",
+    "http://127.0.0.1:1337/*",
+    "http://localhost:11434/*",
+    "https://circlesapp.co/*",
+    "https://*.lovable.app/*"
+  ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Self Maximizer",
+    "default_title": "SelfMax Capsule Assistant",
     "default_icon": {
       "48": "icon-48.png",
       "128": "icon-128.png"
@@ -19,6 +36,17 @@
   "background": {
     "service_worker": "background.js"
   },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://mail.google.com/*",
+        "https://outlook.live.com/*",
+        "https://outlook.office.com/*"
+      ],
+      "js": ["content-gmail.js"],
+      "run_at": "document_idle"
+    }
+  ],
   "icons": {
     "48": "icon-48.png",
     "128": "icon-128.png",

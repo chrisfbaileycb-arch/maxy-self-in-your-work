@@ -1,42 +1,134 @@
 <!doctype html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Self Maximizer</title>
+    <title>SelfMax Capsule Assistant</title>
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
     <header>
-      <img src="icon-48.png" width="28" height="28" alt="" />
-      <div>
-        <div class="title">Self Maximizer</div>
-        <div class="sub">Capture &amp; sort</div>
+      <div class="logo-group">
+        <img src="icon-48.png" width="26" height="26" alt="SelfMax" />
+        <div>
+          <div class="title">SelfMax Capsule</div>
+          <div class="sub">Email &amp; SMS AI Assistant</div>
+        </div>
       </div>
+      <span class="badge" id="session-badge">Checking...</span>
     </header>
 
-    <p class="hint">
-      Highlight a chat, email, or text on this page — or send the whole page — and we'll route it
-      into your working buckets.
-    </p>
+    <!-- Tab Bar -->
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="tab-refactor">⚡ AI Polish</button>
+      <button class="tab-btn" data-tab="tab-capture">📥 Capture</button>
+      <button class="tab-btn" data-tab="tab-settings">⚙️ Engine</button>
+    </nav>
 
-    <div class="row">
-      <button data-source="chat">Send as chat</button>
-      <button data-source="email">Send as email</button>
-      <button data-source="text">Send as text</button>
-    </div>
+    <!-- Tab 1: AI Polish & SMS -->
+    <section id="tab-refactor" class="tab-content active">
+      <div class="field-header">
+        <label for="draft-input">Draft or message text:</label>
+        <button id="btn-paste" class="text-link">Paste</button>
+      </div>
+      <textarea
+        id="draft-input"
+        rows="3"
+        placeholder="Paste or type an email, chat, or draft here..."
+      ></textarea>
 
-    <div class="status" id="status"></div>
+      <div class="actions-row">
+        <button id="btn-polish" class="primary-btn">✨ Tighten &amp; Fix</button>
+        <button id="btn-sms" class="primary-btn">💬 To SMS (&lt;160c)</button>
+      </div>
 
-    <button id="note-to-self" class="secondary">Note to self →</button>
+      <div id="ai-status" class="status-msg"></div>
 
-    <details>
-      <summary>Settings</summary>
-      <label>
-        App URL
-        <input id="origin" type="url" placeholder="https://circlesapp.co" />
-      </label>
-      <button id="save-origin" class="secondary">Save</button>
-    </details>
+      <div id="result-container" class="result-box hidden">
+        <div class="result-header">
+          <span class="result-title">Refined Output</span>
+          <span id="char-count" class="char-pill">0 chars</span>
+        </div>
+        <textarea id="result-text" readonly rows="3"></textarea>
+        <div class="result-actions">
+          <button id="btn-copy" class="secondary-btn">📋 Copy</button>
+          <button id="btn-save-memory" class="secondary-btn">📥 Send to SelfMax</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 2: Capture to SelfMax -->
+    <section id="tab-capture" class="tab-content">
+      <p class="hint">
+        Capture active tab content or highlighted text into SelfMax for AI organization.
+      </p>
+      <div class="grid-3">
+        <button class="source-btn" data-source="chat">💬 Chat</button>
+        <button class="source-btn" data-source="email">✉️ Email</button>
+        <button class="source-btn" data-source="text">📱 SMS</button>
+      </div>
+      <button id="note-to-self" class="secondary-btn full-width mt-2">📝 Note to self →</button>
+      <div id="capture-status" class="status-msg"></div>
+    </section>
+
+    <!-- Tab 3: Settings & Engine Mode -->
+    <section id="tab-settings" class="tab-content">
+      <div class="setting-group">
+        <label class="setting-label">AI Engine Mode</label>
+        <div class="radio-card">
+          <label class="radio-option">
+            <input type="radio" name="ai_mode" value="webchat" checked />
+            <div>
+              <strong>🌐 ChatGPT Web Session</strong>
+              <div class="opt-desc">Zero-config, uses active browser cookies</div>
+            </div>
+          </label>
+
+          <label class="radio-option">
+            <input type="radio" name="ai_mode" value="local" />
+            <div>
+              <strong>💻 Local LLM Server</strong>
+              <div class="opt-desc">LM Studio / Jan / Ollama at localhost</div>
+            </div>
+          </label>
+
+          <label class="radio-option">
+            <input type="radio" name="ai_mode" value="byok" />
+            <div>
+              <strong>🔑 Bring Your Own Key (BYOK)</strong>
+              <div class="opt-desc">OpenAI / OpenRouter API Key</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div id="local-config" class="config-pane hidden">
+        <label>
+          Local Endpoint URL
+          <input id="local-endpoint" type="text" placeholder="http://localhost:1234/v1" />
+        </label>
+      </div>
+
+      <div id="byok-config" class="config-pane hidden">
+        <label>
+          API Key
+          <input id="byok-key" type="password" placeholder="sk-..." />
+        </label>
+        <label class="mt-1">
+          Custom Base URL (Optional)
+          <input id="byok-endpoint" type="text" placeholder="https://api.openai.com/v1" />
+        </label>
+      </div>
+
+      <div class="setting-group mt-2">
+        <label>
+          SelfMax App URL
+          <input id="app-origin" type="url" placeholder="https://circlesapp.co" />
+        </label>
+      </div>
+
+      <button id="save-settings" class="primary-btn full-width mt-2">Save Settings</button>
+      <div id="settings-status" class="status-msg"></div>
+    </section>
 
     <script src="popup.js"></script>
   </body>
