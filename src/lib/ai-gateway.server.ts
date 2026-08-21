@@ -12,37 +12,84 @@ export async function chat(
   messages: ChatMsg[],
   opts: { temperature?: number; json?: boolean; model?: string } = {},
 ): Promise<string> {
-  const key = process.env.LOVABLE_API_KEY;
-  if (!key) throw new AIError("AI Gateway is not configured on this environment.");
+  const lovableKey = process.env.LOVABLE_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY;
+
+  if (!lovableKey && !geminiKey) {
+    throw new AIError(
+      "AI service is not configured on this environment (set GEMINI_API_KEY or LOVABLE_API_KEY).",
+    );
+  }
+
   const { temperature = 0, json = true, model = DEFAULT_MODEL } = opts;
 
-  let res: Response;
-  try {
-    res = await fetch(`${GATEWAY_URL}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${key}`,
-      },
-      body: JSON.stringify({
-        model,
-        temperature,
-        messages,
-        ...(json ? { response_format: { type: "json_object" } } : {}),
-      }),
-    });
-  } catch (e) {
-    throw new AIError(`Could not reach the AI service. (${(e as Error).message})`);
+  if (lovableKey) {
+    let res: Response;
+    try {
+      res = await fetch(`${GATEWAY_URL}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${lovableKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          temperature,
+          messages,
+          ...(json ? { response_format: { type: "json_object" } } : {}),
+        }),
+      });
+    } catch (e) {
+      throw new AIError(`Could not reach the AI service. (${(e as Error).message})`);
+    }
+
+    if (res.status === 429) throw new AIError("Rate limit reached. Try again in a minute.");
+    if (res.status === 402) throw new AIError("AI credits exhausted for this workspace.");
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      throw new AIError(`AI service returned ${res.status}. ${body.slice(0, 200)}`);
+    }
+    const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+    return data?.choices?.[0]?.message?.content ?? "";
+  } else if (geminiKey) {
+    const systemMsg = messages.find((m) => m.role === "system")?.content;
+    const userMsgs = messages.filter((m) => m.role !== "system");
+    const contents = userMsgs.map((m) => ({
+      role: m.role === "assistant" ? "model" : "user",
+      parts: [{ text: m.content }],
+    }));
+
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...(systemMsg ? { systemInstruction: { parts: [{ text: systemMsg }] } } : {}),
+            contents,
+            generationConfig: {
+              temperature,
+              ...(json ? { responseMimeType: "application/json" } : {}),
+            },
+          }),
+        },
+      );
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new AIError(`Gemini API returned ${res.status}. ${body.slice(0, 200)}`);
+      }
+      const data = (await res.json()) as {
+        candidates?: { content?: { parts?: { text?: string }[] } }[];
+      };
+      return data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+    } catch (e) {
+      if (e instanceof AIError) throw e;
+      throw new AIError(`Could not reach Gemini API. (${(e as Error).message})`);
+    }
   }
 
-  if (res.status === 429) throw new AIError("Rate limit reached. Try again in a minute.");
-  if (res.status === 402) throw new AIError("AI credits exhausted for this workspace.");
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new AIError(`AI service returned ${res.status}. ${body.slice(0, 200)}`);
-  }
-  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-  return data?.choices?.[0]?.message?.content ?? "";
+  throw new AIError("AI service not configured.");
 }
 
 export const CATEGORY_PERSONAL = "personal" as const;
