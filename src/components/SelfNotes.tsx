@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { Check, Mic, StickyNote, X } from "lucide-react";
+import { Check, Download, Mic, StickyNote, X } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -60,11 +60,23 @@ export function SelfNotes({ autoMic = false, className = "" }: SelfNotesProps) {
   const runClearDone = useServerFn(clearDoneSelfNotes);
 
   const [notes, setNotes] = useState<NoteRow[]>([]);
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("smx_web_note_draft") || "";
+    }
+    return "";
+  });
   const [listening, setListening] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const recRef = useRef<SpeechRecognitionInstance | null>(null);
   const micSupported = typeof window !== "undefined" && getRecognizerConstructor() !== null;
+
+  // Auto-save draft locally
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("smx_web_note_draft", draft);
+    }
+  }, [draft]);
 
   useEffect(() => {
     runList()
@@ -72,10 +84,54 @@ export function SelfNotes({ autoMic = false, className = "" }: SelfNotesProps) {
       .catch(() => setNotes([]));
   }, [runList]);
 
+  function exportToMarkdown() {
+    if (notes.length === 0 && !draft) {
+      toast.info("No notes to export yet.");
+      return;
+    }
+    const openNotes = notes.filter((n) => !n.done);
+    const doneNotes = notes.filter((n) => n.done);
+    let md = `# SelfMax Notes to Self\n*Exported on ${new Date().toLocaleString()}*\n\n`;
+
+    if (draft.trim()) {
+      md += `## In-Progress Draft\n- ${draft.trim()}\n\n`;
+    }
+
+    if (openNotes.length > 0) {
+      md += `## Active Notes (${openNotes.length})\n`;
+      openNotes.forEach((n) => {
+        md += `- [ ] ${n.body}\n`;
+      });
+      md += "\n";
+    }
+
+    if (doneNotes.length > 0) {
+      md += `## Completed Notes (${doneNotes.length})\n`;
+      doneNotes.forEach((n) => {
+        md += `- [x] ${n.body}\n`;
+      });
+      md += "\n";
+    }
+
+    const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `selfmax_notes_${new Date().toISOString().slice(0, 10)}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success("Exported notes to Markdown (.md)");
+  }
+
   async function submit(text: string) {
     const body = text.trim();
     if (!body) return;
     setDraft("");
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("smx_web_note_draft");
+    }
     try {
       const row = (await runAdd({ data: { body } })) as NoteRow;
       if (row && row.id) {
@@ -157,7 +213,17 @@ export function SelfNotes({ autoMic = false, className = "" }: SelfNotesProps) {
             </span>
           )}
         </h2>
-        <span className="text-xs text-muted-foreground">Never sorted, never exported</span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={exportToMarkdown}
+            title="Export all notes to Markdown (.md)"
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+          >
+            <Download className="h-3 w-3" />
+            Export (.md)
+          </button>
+        </div>
       </div>
 
       <form

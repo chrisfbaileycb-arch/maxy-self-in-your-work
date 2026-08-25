@@ -11,7 +11,7 @@
         <img src="icon-48.png" width="26" height="26" alt="SelfMax" />
         <div>
           <div class="title">SelfMax Capsule</div>
-          <div class="sub">Email &amp; SMS AI Assistant</div>
+          <div class="sub">Browser Agent &amp; Content Scraper</div>
         </div>
       </div>
       <span class="badge" id="session-badge">Checking...</span>
@@ -19,58 +19,152 @@
 
     <!-- Tab Bar -->
     <nav class="tabs">
-      <button class="tab-btn active" data-tab="tab-refactor">⚡ AI Polish</button>
-      <button class="tab-btn" data-tab="tab-capture">📥 Capture</button>
+      <button class="tab-btn active" data-tab="tab-agent">⚡ Agent</button>
+      <button class="tab-btn" data-tab="tab-scraper">🔍 Scraper</button>
+      <button class="tab-btn" data-tab="tab-notes">📝 Notes</button>
       <button class="tab-btn" data-tab="tab-settings">⚙️ Engine</button>
     </nav>
 
-    <!-- Tab 1: AI Polish & SMS -->
-    <section id="tab-refactor" class="tab-content active">
+    <!-- Tab 1: Fast Agent & Template Selector -->
+    <section id="tab-agent" class="tab-content active">
+      <!-- Template Selector for Initial Prompt -->
       <div class="field-header">
-        <label for="draft-input">Draft or message text:</label>
-        <button id="btn-paste" class="text-link">Paste</button>
+        <label for="template-select">Prompt Strategy / Template:</label>
+        <span class="badge-mini" id="template-badge">⚡ Fast Check</span>
+      </div>
+      <select id="template-select" class="dropdown-select">
+        <!-- populated dynamically from templates.js -->
+      </select>
+
+      <div class="field-header mt-2">
+        <label for="draft-input">Context / Goal:</label>
+        <div class="header-actions">
+          <button
+            id="btn-snap-active-tab"
+            class="text-link"
+            title="Grab visible text from active browser tab"
+          >
+            📸 Grab Tab Text
+          </button>
+          <span class="divider">|</span>
+          <button id="btn-paste" class="text-link">Paste</button>
+        </div>
       </div>
       <textarea
         id="draft-input"
         rows="3"
-        placeholder="Paste or type an email, chat, or draft here..."
+        placeholder="e.g. I want to build a custom OS or script to run on my Mini PC..."
       ></textarea>
 
+      <!-- Auto-Save status indicator -->
+      <div class="autosave-row">
+        <span id="autosave-indicator" class="autosave-text">● Auto-saved locally</span>
+        <span id="draft-char-count" class="char-pill">0 chars</span>
+      </div>
+
       <div class="actions-row">
-        <button id="btn-polish" class="primary-btn">✨ Tighten &amp; Fix</button>
-        <button id="btn-sms" class="primary-btn">💬 To SMS (&lt;160c)</button>
+        <button id="btn-run-agent" class="primary-btn">⚡ Run Agent Check</button>
+        <button id="btn-sms" class="secondary-btn">💬 SMS (&lt;160c)</button>
       </div>
 
       <div id="ai-status" class="status-msg"></div>
 
+      <!-- AI Result Container -->
       <div id="result-container" class="result-box hidden">
         <div class="result-header">
-          <span class="result-title">Refined Output</span>
+          <span class="result-title">Agent Takeaways &amp; Next Steps</span>
           <span id="char-count" class="char-pill">0 chars</span>
         </div>
-        <textarea id="result-text" readonly rows="3"></textarea>
+        <textarea id="result-text" readonly rows="5"></textarea>
         <div class="result-actions">
           <button id="btn-copy" class="secondary-btn">📋 Copy</button>
-          <button id="btn-save-memory" class="secondary-btn">📥 Send to SelfMax</button>
+          <button id="btn-export-result-md" class="secondary-btn">📥 Export .md</button>
+          <button id="btn-save-to-notes" class="secondary-btn">💾 Save to Notes</button>
+        </div>
+      </div>
+
+      <!-- Disclaimer Banner -->
+      <div class="disclaimer-banner mt-2">
+        <div class="disclaimer-title">⚠️ Reality &amp; AI Disclaimer</div>
+        <div class="disclaimer-text">
+          AI outputs provide rapid recommendations, not guaranteed technical advice. Always verify
+          native tools, license terms, and existing software before building custom implementations.
         </div>
       </div>
     </section>
 
-    <!-- Tab 2: Capture to SelfMax -->
-    <section id="tab-capture" class="tab-content">
-      <p class="hint">
-        Capture active tab content or highlighted text into SelfMax for AI organization.
-      </p>
-      <div class="grid-3">
-        <button class="source-btn" data-source="chat">💬 Chat</button>
-        <button class="source-btn" data-source="email">✉️ Email</button>
-        <button class="source-btn" data-source="text">📱 SMS</button>
+    <!-- Tab 2: Browser Content Scraper -->
+    <section id="tab-scraper" class="tab-content">
+      <div class="scraper-header">
+        <div>
+          <strong>Active Tab Scraper</strong>
+          <p class="hint">Extract live DOM content, headers, and text from the active webpage.</p>
+        </div>
+        <button id="btn-scrape-now" class="primary-btn">🔍 Scrape Tab</button>
       </div>
-      <button id="note-to-self" class="secondary-btn full-width mt-2">📝 Note to self →</button>
-      <div id="capture-status" class="status-msg"></div>
+
+      <div id="scraped-meta" class="scraped-meta-card hidden">
+        <div id="scraped-title" class="scraped-title">No page scraped yet</div>
+        <div id="scraped-url" class="scraped-url"></div>
+      </div>
+
+      <div class="field-header mt-2">
+        <label for="scraped-content">Scraped DOM Content:</label>
+        <button id="btn-copy-scraped" class="text-link">Copy All</button>
+      </div>
+      <textarea
+        id="scraped-content"
+        rows="4"
+        placeholder="Click 'Scrape Tab' to pull text from the active browser tab..."
+      ></textarea>
+
+      <div class="actions-row mt-2">
+        <button id="btn-analyze-scraped" class="primary-btn">⚡ Check for Solved Tools</button>
+        <button id="btn-export-scraped-md" class="secondary-btn">📥 Export Scrape (.md)</button>
+      </div>
+      <div id="scraper-status" class="status-msg"></div>
     </section>
 
-    <!-- Tab 3: Settings & Engine Mode -->
+    <!-- Tab 3: Local Offline Notes with Auto-Save & Markdown Export -->
+    <section id="tab-notes" class="tab-content">
+      <div class="field-header">
+        <label for="note-title-input">Note Title:</label>
+        <span id="notes-autosave-indicator" class="autosave-text">● Auto-saving</span>
+      </div>
+      <input
+        type="text"
+        id="note-title-input"
+        placeholder="Title or topic..."
+        class="single-input"
+      />
+
+      <div class="field-header mt-2">
+        <label for="note-body-input">Notes &amp; Bullets:</label>
+        <button id="btn-clear-note" class="text-link">Clear</button>
+      </div>
+      <textarea
+        id="note-body-input"
+        rows="5"
+        placeholder="- Bullet 1: Existing tool / native solution&#10;- Bullet 2: Direct action plan&#10;- Bullet 3: Key reference link..."
+      ></textarea>
+
+      <div class="actions-row mt-2">
+        <button id="btn-save-note-item" class="primary-btn">💾 Save Note</button>
+        <button id="btn-export-notes-md" class="secondary-btn">📥 Export All (.md)</button>
+      </div>
+
+      <!-- Stored Quick Notes List -->
+      <div class="mt-2">
+        <div class="field-header">
+          <label>Stored Notes (<span id="saved-notes-count">0</span>):</label>
+        </div>
+        <div id="saved-notes-list" class="notes-list-container">
+          <div class="empty-notes-hint">No saved notes yet. Notes auto-save locally.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 4: Settings & Engine Mode -->
     <section id="tab-settings" class="tab-content">
       <div class="setting-group">
         <label class="setting-label">AI Engine Mode</label>
@@ -130,6 +224,6 @@
       <div id="settings-status" class="status-msg"></div>
     </section>
 
-    <script src="popup.js"></script>
+    <script type="module" src="popup.js"></script>
   </body>
 </html>
