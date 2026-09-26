@@ -1,25 +1,43 @@
 // SelfMax Capsule Assistant — Popup Script (ES Module)
+// Client-Side BYOK Engine & DOM Automation Tool-Calling
 import { AGENT_TEMPLATES } from "./templates.js";
+import { initProviderKeysComponent } from "./provider-keys.js";
+import { initPersonaComponent } from "./persona-manager.js";
 
 const APP_ORIGIN_KEY = "smx_app_origin";
-const AI_MODE_KEY = "smx_ai_mode";
+const BYOK_PROVIDER_KEY = "smx_byok_provider";
+const KEY_GEMINI = "smx_key_gemini";
+const KEY_OPENAI = "smx_key_openai";
+const KEY_ANTHROPIC = "smx_key_anthropic";
+const KEY_OPENROUTER = "smx_key_openrouter";
+const CUSTOM_ENDPOINT_KEY = "smx_custom_endpoint";
+const CUSTOM_MODEL_KEY = "smx_custom_model";
 const LOCAL_ENDPOINT_KEY = "smx_local_endpoint";
-const BYOK_KEY_KEY = "smx_byok_key";
-const BYOK_ENDPOINT_KEY = "smx_byok_endpoint";
+
 const AUTOSAVE_DRAFT_KEY = "smx_autosave_draft_text";
 const AUTOSAVE_NOTE_TITLE_KEY = "smx_autosave_note_title";
 const AUTOSAVE_NOTE_BODY_KEY = "smx_autosave_note_body";
 const SAVED_NOTES_KEY = "smx_saved_local_notes";
 const SELECTED_TEMPLATE_ID_KEY = "smx_selected_template_id";
+const PERSONA_ENABLED_KEY = "persona_injection_enabled";
+const GLOBAL_PERSONA_ENABLED_KEY = "global_persona_enabled";
 
-// DOM Elements
+// DOM Elements — Header & Global Toggle
 const sessionBadge = document.getElementById("session-badge");
+const globalPersonaBanner = document.getElementById("global-persona-banner");
+const globalPersonaToggle = document.getElementById("global-persona-toggle");
+const globalPersonaIcon = document.getElementById("global-persona-icon");
+const globalPersonaPill = document.getElementById("global-persona-pill");
+const globalPersonaStatus = document.getElementById("global-persona-status");
+
+// Tab 1: Agent & DOM Tool Elements
 const templateSelect = document.getElementById("template-select");
 const templateBadge = document.getElementById("template-badge");
 const draftInput = document.getElementById("draft-input");
 const btnSnapActiveTab = document.getElementById("btn-snap-active-tab");
 const btnPaste = document.getElementById("btn-paste");
 const btnRunAgent = document.getElementById("btn-run-agent");
+const btnRunDomAgent = document.getElementById("btn-run-dom-agent");
 const btnSms = document.getElementById("btn-sms");
 const autosaveIndicator = document.getElementById("autosave-indicator");
 const draftCharCount = document.getElementById("draft-char-count");
@@ -31,7 +49,15 @@ const btnCopy = document.getElementById("btn-copy");
 const btnExportResultMd = document.getElementById("btn-export-result-md");
 const btnSaveToNotes = document.getElementById("btn-save-to-notes");
 
-// Scraper Elements
+// DOM Tool Confirmation Elements
+const domToolProposal = document.getElementById("dom-tool-proposal");
+const toolNameBadge = document.getElementById("tool-name-badge");
+const toolRationaleText = document.getElementById("tool-rationale-text");
+const toolDetailsText = document.getElementById("tool-details-text");
+const btnConfirmExecuteTool = document.getElementById("btn-confirm-execute-tool");
+const btnCancelTool = document.getElementById("btn-cancel-tool");
+
+// Tab 2: Scraper Elements
 const btnScrapeNow = document.getElementById("btn-scrape-now");
 const scrapedMeta = document.getElementById("scraped-meta");
 const scrapedTitle = document.getElementById("scraped-title");
@@ -42,7 +68,7 @@ const btnAnalyzeScraped = document.getElementById("btn-analyze-scraped");
 const btnExportScrapedMd = document.getElementById("btn-export-scraped-md");
 const scraperStatus = document.getElementById("scraper-status");
 
-// Notes Elements
+// Tab 3: Notes Elements
 const noteTitleInput = document.getElementById("note-title-input");
 const noteBodyInput = document.getElementById("note-body-input");
 const notesAutosaveIndicator = document.getElementById("notes-autosave-indicator");
@@ -52,21 +78,14 @@ const btnExportNotesMd = document.getElementById("btn-export-notes-md");
 const savedNotesCount = document.getElementById("saved-notes-count");
 const savedNotesList = document.getElementById("saved-notes-list");
 
-// Settings Elements
+// Tab 5: Settings Elements
 const saveSettingsBtn = document.getElementById("save-settings");
 const settingsStatus = document.getElementById("settings-status");
 const appOriginInput = document.getElementById("app-origin");
-const localEndpointInput = document.getElementById("local-endpoint");
-const byokKeyInput = document.getElementById("byok-key");
-const byokEndpointInput = document.getElementById("byok-endpoint");
-const localConfigPane = document.getElementById("local-config");
-const byokConfigPane = document.getElementById("byok-config");
 
-let activeScrapedData = {
-  title: "",
-  url: "",
-  text: "",
-};
+// Active In-Memory State
+let activeProposedTool = null;
+let activeScrapedData = { title: "", url: "", text: "" };
 
 // 1. Tab Navigation
 document.querySelectorAll(".tab-btn").forEach((btn) => {
@@ -94,515 +113,583 @@ function downloadMarkdown(filename, content) {
 }
 
 // 2. Initialize
-async function init() {
-  // Populate templates dropdown
-  renderTemplateSelector();
-
-  // Load storage
-  const storage = await chrome.storage.local.get([
-    APP_ORIGIN_KEY,
-    AI_MODE_KEY,
-    LOCAL_ENDPOINT_KEY,
-    BYOK_KEY_KEY,
-    BYOK_ENDPOINT_KEY,
-    AUTOSAVE_DRAFT_KEY,
-    AUTOSAVE_NOTE_TITLE_KEY,
-    AUTOSAVE_NOTE_BODY_KEY,
-    SAVED_NOTES_KEY,
-    SELECTED_TEMPLATE_ID_KEY,
-  ]);
-
-  if (storage[APP_ORIGIN_KEY]) appOriginInput.value = storage[APP_ORIGIN_KEY];
-  if (storage[LOCAL_ENDPOINT_KEY]) localEndpointInput.value = storage[LOCAL_ENDPOINT_KEY];
-  if (storage[BYOK_KEY_KEY]) byokKeyInput.value = storage[BYOK_KEY_KEY];
-  if (storage[BYOK_ENDPOINT_KEY]) byokEndpointInput.value = storage[BYOK_ENDPOINT_KEY];
-
-  // Restore autosaved draft
-  if (storage[AUTOSAVE_DRAFT_KEY]) {
-    draftInput.value = storage[AUTOSAVE_DRAFT_KEY];
-    updateDraftCharCount();
+function updateGlobalPersonaToggleUI(isEnabled) {
+  if (globalPersonaToggle) {
+    globalPersonaToggle.checked = Boolean(isEnabled);
   }
-
-  // Restore autosaved notes
-  if (storage[AUTOSAVE_NOTE_TITLE_KEY]) noteTitleInput.value = storage[AUTOSAVE_NOTE_TITLE_KEY];
-  if (storage[AUTOSAVE_NOTE_BODY_KEY]) noteBodyInput.value = storage[AUTOSAVE_NOTE_BODY_KEY];
-
-  // Restore selected template
-  if (storage[SELECTED_TEMPLATE_ID_KEY]) {
-    templateSelect.value = storage[SELECTED_TEMPLATE_ID_KEY];
-    updateTemplateBadge(storage[SELECTED_TEMPLATE_ID_KEY]);
+  if (globalPersonaBanner) {
+    if (isEnabled) {
+      globalPersonaBanner.classList.remove("disabled");
+      if (globalPersonaIcon) globalPersonaIcon.textContent = "⚡";
+      if (globalPersonaPill) {
+        globalPersonaPill.textContent = "ACTIVE";
+        globalPersonaPill.className = "badge-mini badge-active";
+      }
+      if (globalPersonaStatus) {
+        globalPersonaStatus.textContent = "Injects into ChatGPT, Claude, Gemini & AI Studio";
+      }
+    } else {
+      globalPersonaBanner.classList.add("disabled");
+      if (globalPersonaIcon) globalPersonaIcon.textContent = "⏸️";
+      if (globalPersonaPill) {
+        globalPersonaPill.textContent = "PAUSED";
+        globalPersonaPill.className = "badge-mini badge-disabled";
+      }
+      if (globalPersonaStatus) {
+        globalPersonaStatus.textContent = "Disabled (Saved persona text preserved)";
+      }
+    }
   }
-
-  // Render stored notes
-  renderSavedNotes(storage[SAVED_NOTES_KEY] || []);
-
-  const currentMode = storage[AI_MODE_KEY] || "webchat";
-  const radio = document.querySelector(`input[name="ai_mode"][value="${currentMode}"]`);
-  if (radio) radio.checked = true;
-  updateConfigPanes(currentMode);
-
-  // Check ChatGPT Session
-  checkSessionStatus();
 }
 
-function renderTemplateSelector() {
-  templateSelect.innerHTML = "";
-  AGENT_TEMPLATES.forEach((tmpl) => {
-    const opt = document.createElement("option");
-    opt.value = tmpl.id;
-    opt.textContent = `${tmpl.badge} ${tmpl.name}`;
-    templateSelect.appendChild(opt);
+async function initGlobalPersonaToggle() {
+  const store = await chrome.storage.local.get([PERSONA_ENABLED_KEY, GLOBAL_PERSONA_ENABLED_KEY]);
+  const isEnabled =
+    store[PERSONA_ENABLED_KEY] !== false && store[GLOBAL_PERSONA_ENABLED_KEY] !== false;
+  updateGlobalPersonaToggleUI(isEnabled);
+
+  globalPersonaToggle?.addEventListener("change", (e) => {
+    const checked = e.target.checked;
+    chrome.storage.local.set(
+      {
+        [PERSONA_ENABLED_KEY]: checked,
+        [GLOBAL_PERSONA_ENABLED_KEY]: checked,
+      },
+      () => {
+        updateGlobalPersonaToggleUI(checked);
+      },
+    );
+  });
+
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === "local" && (changes[PERSONA_ENABLED_KEY] || changes[GLOBAL_PERSONA_ENABLED_KEY])) {
+      const newVal =
+        changes[PERSONA_ENABLED_KEY]?.newValue ?? changes[GLOBAL_PERSONA_ENABLED_KEY]?.newValue;
+      if (typeof newVal === "boolean") {
+        updateGlobalPersonaToggleUI(newVal);
+      }
+    }
   });
 }
 
-function updateTemplateBadge(tmplId) {
-  const found = AGENT_TEMPLATES.find((t) => t.id === tmplId) || AGENT_TEMPLATES[0];
-  templateBadge.textContent = found.badge;
-  if (!draftInput.value) {
-    draftInput.placeholder = found.sampleInputPlaceholder;
+async function init() {
+  await initGlobalPersonaToggle();
+  renderTemplateSelector();
+  const personaContainer = document.getElementById("persona-manager-container");
+  if (personaContainer) {
+    initPersonaComponent(personaContainer);
+  }
+  const providerKeysContainer = document.getElementById("provider-keys-container");
+  if (providerKeysContainer) {
+    initProviderKeysComponent(providerKeysContainer, () => checkSessionStatus());
+  }
+  await checkSessionStatus();
+  await restoreAutoSavedDraft();
+  await restoreAutoSavedNote();
+  await renderSavedNotesList();
+  await loadAppSettings();
+  setupEventHandlers();
+}
+
+// 3. BYOK Session Status Check
+async function checkSessionStatus() {
+  chrome.runtime.sendMessage({ action: "CHECK_SESSION" }, (res) => {
+    if (!sessionBadge) return;
+    if (res?.ready) {
+      sessionBadge.textContent = `● ${res.name}`;
+      sessionBadge.className = "badge online";
+    } else {
+      sessionBadge.textContent = "○ Add API Key";
+      sessionBadge.className = "badge offline";
+      sessionBadge.onclick = () => {
+        document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+        document.querySelectorAll(".tab-content").forEach((c) => c.classList.remove("active"));
+        const tabBtn = document.querySelector('[data-tab="tab-byok"]');
+        const tabPane = document.getElementById("tab-byok");
+        if (tabBtn) tabBtn.classList.add("active");
+        if (tabPane) tabPane.classList.add("active");
+      };
+    }
+  });
+}
+
+// 4. Template Selector
+function renderTemplateSelector() {
+  if (!templateSelect) return;
+  templateSelect.innerHTML = "";
+  AGENT_TEMPLATES.forEach((tpl) => {
+    const opt = document.createElement("option");
+    opt.value = tpl.id;
+    opt.textContent = `${tpl.icon} ${tpl.name}`;
+    templateSelect.appendChild(opt);
+  });
+
+  chrome.storage.local.get([SELECTED_TEMPLATE_ID_KEY], (res) => {
+    const savedId = res[SELECTED_TEMPLATE_ID_KEY];
+    if (savedId && AGENT_TEMPLATES.some((t) => t.id === savedId)) {
+      templateSelect.value = savedId;
+      updateTemplateBadge(savedId);
+    } else {
+      updateTemplateBadge(AGENT_TEMPLATES[0].id);
+    }
+  });
+
+  templateSelect.addEventListener("change", (e) => {
+    const tplId = e.target.value;
+    chrome.storage.local.set({ [SELECTED_TEMPLATE_ID_KEY]: tplId });
+    updateTemplateBadge(tplId);
+  });
+}
+
+function updateTemplateBadge(tplId) {
+  const tpl = AGENT_TEMPLATES.find((t) => t.id === tplId);
+  if (tpl && templateBadge) {
+    templateBadge.textContent = tpl.strategyBadge || "⚡ Check";
+    if (!draftInput.value.trim() && tpl.defaultPlaceholder) {
+      draftInput.placeholder = tpl.defaultPlaceholder;
+    }
   }
 }
 
-templateSelect.addEventListener("change", (e) => {
-  const tmplId = e.target.value;
-  updateTemplateBadge(tmplId);
-  chrome.storage.local.set({ [SELECTED_TEMPLATE_ID_KEY]: tmplId });
-});
-
-// Auto-save listeners with debounce
-let draftSaveTimeout = null;
-draftInput.addEventListener("input", () => {
-  updateDraftCharCount();
-  autosaveIndicator.textContent = "● Saving...";
-  clearTimeout(draftSaveTimeout);
-  draftSaveTimeout = setTimeout(async () => {
-    await chrome.storage.local.set({ [AUTOSAVE_DRAFT_KEY]: draftInput.value });
-    autosaveIndicator.textContent = "● Auto-saved locally";
-  }, 400);
-});
-
-function updateDraftCharCount() {
-  const len = draftInput.value.length;
-  draftCharCount.textContent = `${len} chars`;
-}
-
-let notesSaveTimeout = null;
-function handleNotesAutosave() {
-  notesAutosaveIndicator.textContent = "● Saving...";
-  clearTimeout(notesSaveTimeout);
-  notesSaveTimeout = setTimeout(async () => {
-    await chrome.storage.local.set({
-      [AUTOSAVE_NOTE_TITLE_KEY]: noteTitleInput.value,
-      [AUTOSAVE_NOTE_BODY_KEY]: noteBodyInput.value,
-    });
-    notesAutosaveIndicator.textContent = "● Auto-saved locally";
-  }, 400);
-}
-noteTitleInput.addEventListener("input", handleNotesAutosave);
-noteBodyInput.addEventListener("input", handleNotesAutosave);
-
-// 3. Active Tab Context Grabber & Scraper
-async function scrapeActiveTab() {
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab || !tab.id) {
-      throw new Error("No active browser tab found");
-    }
-
-    if (tab.url?.startsWith("chrome://") || tab.url?.startsWith("edge://")) {
-      throw new Error("Browser internal pages cannot be scraped");
-    }
-
-    const results = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: () => {
-        const title = document.title || "";
-        const url = window.location.href || "";
-        const selection = window.getSelection()?.toString()?.trim() || "";
-
-        // Extract clean text from body, prioritizing main elements
-        const mainEl = document.querySelector("main, article, #content, .content") || document.body;
-        const rawText = (selection || mainEl?.innerText || document.body?.innerText || "")
-          .replace(/\s+/g, " ")
-          .trim()
-          .slice(0, 5000); // 5000 chars safe snapshot
-
-        return { title, url, selection, text: rawText };
-      },
-    });
-
-    if (results && results[0]?.result) {
-      activeScrapedData = results[0].result;
-      return activeScrapedData;
-    }
-    throw new Error("Empty scrape result");
-  } catch (err) {
-    throw err;
-  }
-}
-
-// Button: Grab Tab Text (in Agent Tab)
-btnSnapActiveTab.addEventListener("click", async () => {
-  aiStatus.textContent = "📸 Scraping active tab text...";
-  try {
-    const data = await scrapeActiveTab();
-    draftInput.value = `[Source: ${data.title}]\nURL: ${data.url}\n\n${data.text.slice(0, 1500)}`;
-    updateDraftCharCount();
-    await chrome.storage.local.set({ [AUTOSAVE_DRAFT_KEY]: draftInput.value });
-    aiStatus.textContent = "✓ Tab text grabbed into context.";
-    setTimeout(() => (aiStatus.textContent = ""), 2000);
-  } catch (err) {
-    aiStatus.textContent = `⚠️ ${err.message || "Failed to grab tab"}`;
-    setTimeout(() => (aiStatus.textContent = ""), 3000);
-  }
-});
-
-btnPaste.addEventListener("click", async () => {
-  try {
-    const text = await navigator.clipboard.readText();
-    if (text) {
-      draftInput.value = text;
-      updateDraftCharCount();
-      await chrome.storage.local.set({ [AUTOSAVE_DRAFT_KEY]: draftInput.value });
-    }
-  } catch {
-    draftInput.focus();
-  }
-});
-
-// Button: Scrape Tab (in Scraper Tab)
-btnScrapeNow.addEventListener("click", async () => {
-  scraperStatus.textContent = "🔍 Extracting DOM & content...";
-  try {
-    const data = await scrapeActiveTab();
-    scrapedTitle.textContent = data.title || "Untitled Page";
-    scrapedUrl.textContent = data.url || "";
-    scrapedMeta.classList.remove("hidden");
-    scrapedContent.value = data.text;
-    scraperStatus.textContent = `✓ Scraped ${data.text.length} characters cleanly.`;
-    setTimeout(() => (scraperStatus.textContent = ""), 2500);
-  } catch (err) {
-    scraperStatus.textContent = `❌ ${err.message}`;
-  }
-});
-
-btnCopyScraped.addEventListener("click", async () => {
-  if (!scrapedContent.value) return;
-  await navigator.clipboard.writeText(scrapedContent.value);
-  btnCopyScraped.textContent = "Copied!";
-  setTimeout(() => (btnCopyScraped.textContent = "Copy All"), 1500);
-});
-
-btnAnalyzeScraped.addEventListener("click", () => {
-  if (!scrapedContent.value) {
-    scraperStatus.textContent = "⚠️ Scrape tab first.";
-    return;
-  }
-  // Switch to Agent tab with Anti-overkill check
-  templateSelect.value = "anti_overkill";
-  updateTemplateBadge("anti_overkill");
-  draftInput.value = `Please analyze this page content for native tools, solved problems, and simple solutions vs over-engineering:\n\n[Page: ${activeScrapedData.title || "Untitled"}]\n${scrapedContent.value.slice(0, 2000)}`;
-  updateDraftCharCount();
-
-  document.querySelector('[data-tab="tab-agent"]').click();
-  runAIAgent(false);
-});
-
-// Markdown Export for Scraped Content
-btnExportScrapedMd.addEventListener("click", () => {
-  if (!scrapedContent.value) {
-    scraperStatus.textContent = "⚠️ Nothing to export.";
-    return;
-  }
-  const title = activeScrapedData.title || "Web Scrape";
-  const safeFilename = `${title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}_scrape.md`;
-  const mdContent = `# ${title}
-- **Source URL**: ${activeScrapedData.url || "N/A"}
-- **Captured At**: ${new Date().toISOString()}
-
----
-
-## Scraped Content
-\`\`\`text
-${scrapedContent.value}
-\`\`\`
-`;
-  downloadMarkdown(safeFilename, mdContent);
-  scraperStatus.textContent = "✓ Exported to Markdown file!";
-  setTimeout(() => (scraperStatus.textContent = ""), 2000);
-});
-
-// 4. Agent Execution with Anti-Overkill System Prompts
-btnRunAgent.addEventListener("click", () => runAIAgent(false));
-btnSms.addEventListener("click", () => runAIAgent(true));
-
-async function runAIAgent(isSms = false) {
-  const rawText = draftInput.value.trim();
-  if (!rawText) {
-    aiStatus.textContent = "⚠️ Please enter your goal, question, or grab tab text.";
-    setTimeout(() => (aiStatus.textContent = ""), 2500);
+// 5. DOM Tool-Calling Agent Loop
+async function runDomAgentCheck() {
+  const goal = draftInput?.value?.trim();
+  if (!goal) {
+    showStatus(aiStatus, "Please enter a context or goal first.", "error");
     return;
   }
 
-  const selectedTmpl =
-    AGENT_TEMPLATES.find((t) => t.id === templateSelect.value) || AGENT_TEMPLATES[0];
+  showStatus(aiStatus, "🤖 Analyzing active page context & interactive DOM...", "info");
+  domToolProposal?.classList.add("hidden");
 
-  aiStatus.innerHTML = `<span style="color:#f0806a;">⚡ Running ${selectedTmpl.badge} check...</span>`;
-  resultContainer.classList.add("hidden");
-
-  let prompt = `<system_instruction>
-${selectedTmpl.systemPrompt}
-
-STRICT CONSTRAINTS:
-1. BREVITY: Keep entire output concise, formatted in bullet points (max 3-4 bullets).
-2. NO FLUFF: Do not include introductory phrases (e.g. "Here is what I found:") or concluding sign-offs.
-3. PREVENT OVERKILL: Clearly state if ready-made, native tools already exist (e.g., standard OS capabilities, free utilities) so user never wastes time reinventing solved wheels.
-${isSms ? "4. SMS CONSTRAINT: Strictly under 160 characters. Preserving numbers/dates." : ""}
-</system_instruction>
-
-<user_query_and_context>
-${rawText}
-</user_query_and_context>`;
-
-  chrome.runtime.sendMessage({ action: "GENERATE_DRAFT", prompt }, (res) => {
+  chrome.runtime.sendMessage({ action: "RUN_PAGE_AGENT", goal }, (res) => {
     if (chrome.runtime.lastError) {
-      aiStatus.textContent = "❌ " + (chrome.runtime.lastError.message || "Execution error");
+      showStatus(aiStatus, `Agent error: ${chrome.runtime.lastError.message}`, "error");
       return;
     }
 
-    if (res && res.success && res.text) {
-      aiStatus.innerHTML = `<span style="color:#16a34a; font-weight:600;">✓ Agent check complete!</span>`;
-      resultText.value = res.text.trim();
-      charCount.textContent = `${resultText.value.length} chars`;
-      resultContainer.classList.remove("hidden");
+    if (!res?.success) {
+      showStatus(aiStatus, `Agent failed: ${res?.error || "Unknown error"}`, "error");
+      return;
+    }
+
+    // Display model explanation/takeaways
+    if (resultText) resultText.value = res.rawOutput;
+    resultContainer?.classList.remove("hidden");
+    updateCharCount(resultText, charCount);
+
+    if (res.parsedTool && res.parsedTool.tool && res.parsedTool.tool !== "none") {
+      activeProposedTool = res.parsedTool;
+      if (toolNameBadge) toolNameBadge.textContent = res.parsedTool.tool;
+      if (toolRationaleText)
+        toolRationaleText.textContent =
+          res.parsedTool.rationale || "Automated interaction on active webpage.";
+      if (toolDetailsText) {
+        toolDetailsText.textContent = JSON.stringify(res.parsedTool.params, null, 2);
+      }
+      domToolProposal?.classList.remove("hidden");
+      showStatus(aiStatus, "✓ Page action proposed — confirm execution below.", "success");
     } else {
-      aiStatus.textContent = `❌ ${res?.error || "AI Generation failed. Check engine settings."}`;
+      activeProposedTool = null;
+      domToolProposal?.classList.add("hidden");
+      showStatus(aiStatus, "✓ Analysis complete (no DOM action needed).", "success");
     }
   });
 }
 
-btnCopy.addEventListener("click", async () => {
-  if (!resultText.value) return;
-  await navigator.clipboard.writeText(resultText.value);
-  btnCopy.textContent = "✓ Copied";
-  setTimeout(() => (btnCopy.textContent = "📋 Copy"), 1500);
-});
+async function executeProposedDomTool() {
+  if (!activeProposedTool) return;
+  showStatus(aiStatus, `Executing ${activeProposedTool.tool} on active page...`, "info");
 
-// Markdown Export for Agent Result
-btnExportResultMd.addEventListener("click", () => {
-  if (!resultText.value) return;
-  const tmpl = AGENT_TEMPLATES.find((t) => t.id === templateSelect.value) || AGENT_TEMPLATES[0];
-  const dateStr = new Date().toISOString().slice(0, 10);
-  const mdContent = `# Agent Takeaway (${tmpl.name})
-- **Strategy**: ${tmpl.name}
-- **Date**: ${dateStr}
-- **Input Query**:
-> ${draftInput.value.slice(0, 200)}
+  chrome.runtime.sendMessage(
+    {
+      action: "EXECUTE_DOM_TOOL",
+      tool: activeProposedTool.tool,
+      params: activeProposedTool.params,
+    },
+    (res) => {
+      if (chrome.runtime.lastError || !res?.success) {
+        showStatus(
+          aiStatus,
+          `DOM tool error: ${res?.error || chrome.runtime.lastError?.message}`,
+          "error",
+        );
+      } else {
+        showStatus(aiStatus, `✓ Executed ${activeProposedTool.tool} successfully!`, "success");
+        domToolProposal?.classList.add("hidden");
+        activeProposedTool = null;
+      }
+    },
+  );
+}
 
----
-
-## Direct Recommendations & Next Steps
-${resultText.value}
-
----
-*Disclaimer: AI generated guidance. Verify native tools and compatibility before implementation.*
-`;
-  downloadMarkdown(`agent_takeaways_${dateStr}.md`, mdContent);
-  aiStatus.textContent = "✓ Exported to Markdown!";
-  setTimeout(() => (aiStatus.textContent = ""), 2000);
-});
-
-// Save to Notes
-btnSaveToNotes.addEventListener("click", async () => {
-  if (!resultText.value) return;
-  const noteTitle = `Takeaways: ${draftInput.value.slice(0, 40)}...`;
-  const noteBody = resultText.value;
-
-  const storage = await chrome.storage.local.get([SAVED_NOTES_KEY]);
-  const notes = storage[SAVED_NOTES_KEY] || [];
-  notes.unshift({
-    id: Date.now().toString(),
-    title: noteTitle,
-    body: noteBody,
-    createdAt: new Date().toISOString(),
-  });
-
-  await chrome.storage.local.set({ [SAVED_NOTES_KEY]: notes });
-  renderSavedNotes(notes);
-  btnSaveToNotes.textContent = "✓ Saved";
-  setTimeout(() => (btnSaveToNotes.textContent = "💾 Save to Notes"), 1500);
-});
-
-// 5. Notes Management & Export
-btnClearNote.addEventListener("click", async () => {
-  noteTitleInput.value = "";
-  noteBodyInput.value = "";
-  await chrome.storage.local.set({
-    [AUTOSAVE_NOTE_TITLE_KEY]: "",
-    [AUTOSAVE_NOTE_BODY_KEY]: "",
-  });
-  notesAutosaveIndicator.textContent = "● Cleared";
-});
-
-btnSaveNoteItem.addEventListener("click", async () => {
-  const title = noteTitleInput.value.trim() || "Untitled Note";
-  const body = noteBodyInput.value.trim();
-  if (!body) {
-    notesAutosaveIndicator.textContent = "⚠️ Enter note body first";
+// 6. Standard Agent Check & SMS
+async function runAgentCheck() {
+  const userText = draftInput?.value?.trim();
+  if (!userText) {
+    showStatus(aiStatus, "Enter context or click 'Grab Tab Text' first.", "error");
     return;
   }
 
-  const storage = await chrome.storage.local.get([SAVED_NOTES_KEY]);
-  const notes = storage[SAVED_NOTES_KEY] || [];
-  notes.unshift({
-    id: Date.now().toString(),
+  const selectedTplId = templateSelect?.value;
+  const tpl = AGENT_TEMPLATES.find((t) => t.id === selectedTplId) || AGENT_TEMPLATES[0];
+  const fullPrompt = `${tpl.systemPrompt}\n\nUSER INPUT / CONTEXT:\n${userText}`;
+
+  showStatus(aiStatus, "Running BYOK check...", "info");
+  chrome.runtime.sendMessage({ action: "GENERATE_DRAFT", prompt: fullPrompt }, (res) => {
+    if (chrome.runtime.lastError || !res?.success) {
+      showStatus(aiStatus, `Error: ${res?.error || chrome.runtime.lastError?.message}`, "error");
+      return;
+    }
+
+    if (resultText) resultText.value = res.text;
+    resultContainer?.classList.remove("hidden");
+    updateCharCount(resultText, charCount);
+    showStatus(aiStatus, "✓ Check complete.", "success");
+  });
+}
+
+async function runSmsConversion() {
+  const userText = draftInput?.value?.trim();
+  if (!userText) {
+    showStatus(aiStatus, "Enter context or draft text first.", "error");
+    return;
+  }
+
+  const prompt = `Condense the following text into an actionable SMS text under 160 characters. Do not wrap in quotes or add preamble:\n\n${userText}`;
+  showStatus(aiStatus, "Generating 160-char SMS...", "info");
+
+  chrome.runtime.sendMessage({ action: "GENERATE_DRAFT", prompt }, (res) => {
+    if (chrome.runtime.lastError || !res?.success) {
+      showStatus(aiStatus, `Error: ${res?.error || chrome.runtime.lastError?.message}`, "error");
+      return;
+    }
+
+    if (resultText) resultText.value = res.text;
+    resultContainer?.classList.remove("hidden");
+    updateCharCount(resultText, charCount);
+    showStatus(aiStatus, "✓ SMS generated under 160 chars.", "success");
+  });
+}
+
+// 7. Active Tab Snap & Scraper
+async function snapActiveTabText() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.id) {
+    showStatus(aiStatus, "No active tab found.", "error");
+    return;
+  }
+
+  chrome.scripting.executeScript(
+    {
+      target: { tabId: tab.id },
+      func: () =>
+        window.getSelection()?.toString() || (document.body?.innerText || "").slice(0, 15000),
+    },
+    ([{ result } = {}]) => {
+      if (result) {
+        draftInput.value = result;
+        updateCharCount(draftInput, draftCharCount);
+        saveDraftDebounced();
+        showStatus(aiStatus, `Snapped ${result.length} characters from tab.`, "success");
+      } else {
+        showStatus(aiStatus, "No readable text on this tab.", "error");
+      }
+    },
+  );
+}
+
+async function scrapeTab() {
+  showStatus(scraperStatus, "Scraping active tab DOM...", "info");
+  chrome.runtime.sendMessage({ action: "EXECUTE_DOM_TOOL", tool: "extract_context" }, (res) => {
+    if (chrome.runtime.lastError || !res?.success) {
+      showStatus(
+        scraperStatus,
+        `Scrape error: ${res?.error || chrome.runtime.lastError?.message}`,
+        "error",
+      );
+      return;
+    }
+
+    const data = res.result;
+    activeScrapedData = {
+      title: data.title,
+      url: data.url,
+      text: data.bodySnippet,
+    };
+
+    if (scrapedTitle) scrapedTitle.textContent = data.title || "Untitled Webpage";
+    if (scrapedUrl) scrapedUrl.textContent = data.url;
+    scrapedMeta?.classList.remove("hidden");
+
+    let formatted = `# ${data.title}\nSource: ${data.url}\n\n## Headings\n${data.headings.join("\n")}\n\n## Body Content\n${data.bodySnippet}`;
+    if (scrapedContent) scrapedContent.value = formatted;
+    showStatus(scraperStatus, "✓ Page content extracted successfully.", "success");
+  });
+}
+
+// 8. Auto-Save & Notes Manager
+let draftTimeout = null;
+function saveDraftDebounced() {
+  clearTimeout(draftTimeout);
+  if (autosaveIndicator) autosaveIndicator.textContent = "● Saving...";
+  draftTimeout = setTimeout(() => {
+    chrome.storage.local.set({ [AUTOSAVE_DRAFT_KEY]: draftInput.value }, () => {
+      if (autosaveIndicator) autosaveIndicator.textContent = "● Auto-saved locally";
+    });
+  }, 400);
+}
+
+let noteTimeout = null;
+function saveNoteDraftDebounced() {
+  clearTimeout(noteTimeout);
+  if (notesAutosaveIndicator) notesAutosaveIndicator.textContent = "● Saving...";
+  noteTimeout = setTimeout(() => {
+    chrome.storage.local.set(
+      {
+        [AUTOSAVE_NOTE_TITLE_KEY]: noteTitleInput.value,
+        [AUTOSAVE_NOTE_BODY_KEY]: noteBodyInput.value,
+      },
+      () => {
+        if (notesAutosaveIndicator) notesAutosaveIndicator.textContent = "● Auto-saved locally";
+      },
+    );
+  }, 400);
+}
+
+async function restoreAutoSavedDraft() {
+  const store = await chrome.storage.local.get([AUTOSAVE_DRAFT_KEY]);
+  if (store[AUTOSAVE_DRAFT_KEY] && draftInput) {
+    draftInput.value = store[AUTOSAVE_DRAFT_KEY];
+    updateCharCount(draftInput, draftCharCount);
+  }
+}
+
+async function restoreAutoSavedNote() {
+  const store = await chrome.storage.local.get([AUTOSAVE_NOTE_TITLE_KEY, AUTOSAVE_NOTE_BODY_KEY]);
+  if (store[AUTOSAVE_NOTE_TITLE_KEY] && noteTitleInput) {
+    noteTitleInput.value = store[AUTOSAVE_NOTE_TITLE_KEY];
+  }
+  if (store[AUTOSAVE_NOTE_BODY_KEY] && noteBodyInput) {
+    noteBodyInput.value = store[AUTOSAVE_NOTE_BODY_KEY];
+  }
+}
+
+async function saveNoteItem() {
+  const title = noteTitleInput?.value?.trim() || "Untitled Note";
+  const body = noteBodyInput?.value?.trim();
+  if (!body) return;
+
+  const store = await chrome.storage.local.get([SAVED_NOTES_KEY]);
+  const notes = store[SAVED_NOTES_KEY] || [];
+  const newNote = {
+    id: `note-${Date.now()}`,
     title,
     body,
     createdAt: new Date().toISOString(),
-  });
+  };
 
+  notes.unshift(newNote);
   await chrome.storage.local.set({ [SAVED_NOTES_KEY]: notes });
-  renderSavedNotes(notes);
-  btnSaveNoteItem.textContent = "✓ Saved!";
-  setTimeout(() => (btnSaveNoteItem.textContent = "💾 Save Note"), 1500);
-});
+  await renderSavedNotesList();
 
-function renderSavedNotes(notes) {
-  savedNotesCount.textContent = notes.length.toString();
-  if (!notes.length) {
+  noteTitleInput.value = "";
+  noteBodyInput.value = "";
+  chrome.storage.local.remove([AUTOSAVE_NOTE_TITLE_KEY, AUTOSAVE_NOTE_BODY_KEY]);
+}
+
+async function renderSavedNotesList() {
+  const store = await chrome.storage.local.get([SAVED_NOTES_KEY]);
+  const notes = store[SAVED_NOTES_KEY] || [];
+
+  if (savedNotesCount) savedNotesCount.textContent = notes.length;
+  if (!savedNotesList) return;
+
+  if (notes.length === 0) {
     savedNotesList.innerHTML = `<div class="empty-notes-hint">No saved notes yet. Notes auto-save locally.</div>`;
     return;
   }
 
   savedNotesList.innerHTML = "";
-  notes.forEach((n) => {
-    const item = document.createElement("div");
-    item.className = "note-item";
-    item.innerHTML = `
-      <div class="note-item-text" title="${n.title}">📌 ${n.title}</div>
-      <button class="note-item-del" title="Delete note" data-id="${n.id}">✕</button>
+  notes.forEach((note) => {
+    const card = document.createElement("div");
+    card.className = "note-item-card";
+    card.innerHTML = `
+      <div class="note-item-header">
+        <strong>${escapeHtml(note.title)}</strong>
+        <span class="note-time">${new Date(note.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+      </div>
+      <div class="note-item-body">${escapeHtml(note.body.slice(0, 120))}${note.body.length > 120 ? "..." : ""}</div>
+      <div class="note-item-footer">
+        <button class="text-link btn-export-single-md" data-id="${note.id}">📥 .md</button>
+        <button class="text-link btn-copy-single" data-id="${note.id}">📋 Copy</button>
+        <button class="text-link btn-delete-single text-error" data-id="${note.id}">🗑 Delete</button>
+      </div>
     `;
-    item.querySelector(".note-item-text").addEventListener("click", () => {
-      noteTitleInput.value = n.title;
-      noteBodyInput.value = n.body;
-      handleNotesAutosave();
+    savedNotesList.appendChild(card);
+  });
+
+  savedNotesList.querySelectorAll(".btn-export-single-md").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const note = notes.find((n) => n.id === btn.dataset.id);
+      if (note)
+        downloadMarkdown(`${sanitizeFilename(note.title)}.md`, `# ${note.title}\n\n${note.body}`);
     });
-    item.querySelector(".note-item-del").addEventListener("click", async (e) => {
-      e.stopPropagation();
-      const updated = notes.filter((item) => item.id !== n.id);
+  });
+
+  savedNotesList.querySelectorAll(".btn-copy-single").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const note = notes.find((n) => n.id === btn.dataset.id);
+      if (note) navigator.clipboard.writeText(`${note.title}\n\n${note.body}`);
+    });
+  });
+
+  savedNotesList.querySelectorAll(".btn-delete-single").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const updated = notes.filter((n) => n.id !== btn.dataset.id);
       await chrome.storage.local.set({ [SAVED_NOTES_KEY]: updated });
-      renderSavedNotes(updated);
+      renderSavedNotesList();
     });
-    savedNotesList.appendChild(item);
   });
 }
 
-// Markdown Export for All Notes
-btnExportNotesMd.addEventListener("click", async () => {
-  const storage = await chrome.storage.local.get([
-    SAVED_NOTES_KEY,
-    AUTOSAVE_NOTE_TITLE_KEY,
-    AUTOSAVE_NOTE_BODY_KEY,
-  ]);
-  const notes = storage[SAVED_NOTES_KEY] || [];
+// 9. App Settings
+async function loadAppSettings() {
+  const store = await chrome.storage.local.get([APP_ORIGIN_KEY]);
+  if (appOriginInput) appOriginInput.value = store[APP_ORIGIN_KEY] || "https://circlesapp.co";
+}
 
-  let mdContent = `# SelfMax Capsule — Stored Notes & Action Items
-*Exported on ${new Date().toLocaleString()}*
+async function saveAppSettings() {
+  const origin = appOriginInput?.value?.trim() || "https://circlesapp.co";
+  await chrome.storage.local.set({ [APP_ORIGIN_KEY]: origin });
+  showStatus(settingsStatus, "✓ Settings saved.", "success");
+}
 
----
-
-`;
-
-  if (storage[AUTOSAVE_NOTE_BODY_KEY]) {
-    mdContent += `## Current Draft: ${storage[AUTOSAVE_NOTE_TITLE_KEY] || "Untitled Draft"}
-${storage[AUTOSAVE_NOTE_BODY_KEY]}
-
----
-
-`;
-  }
-
-  if (notes.length) {
-    notes.forEach((n, idx) => {
-      mdContent += `### ${idx + 1}. ${n.title}
-*Created: ${new Date(n.createdAt).toLocaleString()}*
-
-${n.body}
-
----
-`;
-    });
-  } else if (!storage[AUTOSAVE_NOTE_BODY_KEY]) {
-    mdContent += `*(No notes stored)*\n`;
-  }
-
-  downloadMarkdown(`selfmax_notes_${new Date().toISOString().slice(0, 10)}.md`, mdContent);
-  notesAutosaveIndicator.textContent = "✓ Notes exported to Markdown!";
-  setTimeout(() => (notesAutosaveIndicator.textContent = "● Auto-saved locally"), 2000);
-});
-
-// 6. Settings & Session Management
-function updateConfigPanes(mode) {
-  if (mode === "local") {
-    localConfigPane.classList.remove("hidden");
-    byokConfigPane.classList.add("hidden");
-  } else if (mode === "byok") {
-    localConfigPane.classList.add("hidden");
-    byokConfigPane.classList.remove("hidden");
-  } else {
-    localConfigPane.classList.add("hidden");
-    byokConfigPane.classList.add("hidden");
+// Helpers
+function showStatus(el, text, type) {
+  if (!el) return;
+  el.textContent = text;
+  el.className = `status-msg ${type}`;
+  if (type === "success" || type === "error") {
+    setTimeout(() => {
+      if (el.textContent === text) el.textContent = "";
+    }, 4000);
   }
 }
 
-document.querySelectorAll('input[name="ai_mode"]').forEach((r) => {
-  r.addEventListener("change", (e) => {
-    updateConfigPanes(e.target.value);
+function updateCharCount(input, countEl) {
+  if (!countEl || !input) return;
+  countEl.textContent = `${input.value.length} chars`;
+}
+
+function sanitizeFilename(name) {
+  return name
+    .replace(/[^a-z0-9_-]/gi, "_")
+    .toLowerCase()
+    .slice(0, 30);
+}
+
+function escapeHtml(str) {
+  return str.replace(
+    /[&<>"']/g,
+    (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[m],
+  );
+}
+
+function setupEventHandlers() {
+  draftInput?.addEventListener("input", () => {
+    updateCharCount(draftInput, draftCharCount);
+    saveDraftDebounced();
   });
-});
 
-async function checkSessionStatus() {
-  sessionBadge.textContent = "Checking...";
-  sessionBadge.className = "badge";
+  noteTitleInput?.addEventListener("input", saveNoteDraftDebounced);
+  noteBodyInput?.addEventListener("input", saveNoteDraftDebounced);
 
-  chrome.runtime.sendMessage({ action: "CHECK_SESSION" }, (res) => {
-    if (chrome.runtime.lastError || !res) {
-      sessionBadge.textContent = "Offline";
-      sessionBadge.className = "badge";
-      return;
-    }
-
-    if (res.loggedIn) {
-      sessionBadge.textContent = "🟢 Web Active";
-      sessionBadge.className = "badge online";
-      sessionBadge.title = `Connected as ${res.user}`;
-    } else {
-      sessionBadge.textContent = "🔴 Login ChatGPT";
-      sessionBadge.className = "badge offline";
-      sessionBadge.title = "Click to open chatgpt.com and log in";
-      sessionBadge.onclick = () => chrome.tabs.create({ url: "https://chatgpt.com" });
+  btnSnapActiveTab?.addEventListener("click", snapActiveTabText);
+  btnPaste?.addEventListener("click", async () => {
+    const text = await navigator.clipboard.readText();
+    if (text) {
+      draftInput.value = text;
+      updateCharCount(draftInput, draftCharCount);
+      saveDraftDebounced();
     }
   });
-}
 
-saveSettingsBtn.addEventListener("click", async () => {
-  const selectedMode = document.querySelector('input[name="ai_mode"]:checked')?.value || "webchat";
-  const appOrigin = appOriginInput.value.trim() || "https://circlesapp.co";
-  const localEndpoint = localEndpointInput.value.trim() || "http://localhost:1234/v1";
-  const byokKey = byokKeyInput.value.trim();
-  const byokEndpoint = byokEndpointInput.value.trim() || "https://api.openai.com/v1";
-
-  await chrome.storage.local.set({
-    [AI_MODE_KEY]: selectedMode,
-    [APP_ORIGIN_KEY]: appOrigin,
-    [LOCAL_ENDPOINT_KEY]: localEndpoint,
-    [BYOK_KEY_KEY]: byokKey,
-    [BYOK_ENDPOINT_KEY]: byokEndpoint,
+  btnRunAgent?.addEventListener("click", runAgentCheck);
+  btnRunDomAgent?.addEventListener("click", runDomAgentCheck);
+  btnConfirmExecuteTool?.addEventListener("click", executeProposedDomTool);
+  btnCancelTool?.addEventListener("click", () => {
+    activeProposedTool = null;
+    domToolProposal?.classList.add("hidden");
   });
 
-  settingsStatus.textContent = "✓ Settings saved!";
-  setTimeout(() => (settingsStatus.textContent = ""), 2000);
-  checkSessionStatus();
-});
+  btnSms?.addEventListener("click", runSmsConversion);
 
-init();
+  btnCopy?.addEventListener("click", () => {
+    navigator.clipboard.writeText(resultText?.value || "");
+    showStatus(aiStatus, "✓ Copied to clipboard.", "success");
+  });
+
+  btnExportResultMd?.addEventListener("click", () => {
+    const text = resultText?.value || "";
+    downloadMarkdown("agent-check.md", text);
+  });
+
+  btnSaveToNotes?.addEventListener("click", async () => {
+    const text = resultText?.value || "";
+    if (!text) return;
+    const store = await chrome.storage.local.get([SAVED_NOTES_KEY]);
+    const notes = store[SAVED_NOTES_KEY] || [];
+    notes.unshift({
+      id: `note-${Date.now()}`,
+      title: "Agent Takeaways",
+      body: text,
+      createdAt: new Date().toISOString(),
+    });
+    await chrome.storage.local.set({ [SAVED_NOTES_KEY]: notes });
+    renderSavedNotesList();
+    showStatus(aiStatus, "✓ Saved directly into Notes tab.", "success");
+  });
+
+  // Scraper Actions
+  btnScrapeNow?.addEventListener("click", scrapeTab);
+  btnCopyScraped?.addEventListener("click", () => {
+    navigator.clipboard.writeText(scrapedContent?.value || "");
+    showStatus(scraperStatus, "✓ Copied scraped text.", "success");
+  });
+  btnAnalyzeScraped?.addEventListener("click", () => {
+    if (scrapedContent?.value && draftInput) {
+      draftInput.value = scrapedContent.value;
+      updateCharCount(draftInput, draftCharCount);
+      saveDraftDebounced();
+      document.querySelector('[data-tab="tab-agent"]')?.click();
+      runAgentCheck();
+    }
+  });
+  btnExportScrapedMd?.addEventListener("click", () => {
+    const content = scrapedContent?.value || "";
+    downloadMarkdown(`${sanitizeFilename(activeScrapedData.title || "scraped-page")}.md`, content);
+  });
+
+  // Notes Actions
+  btnClearNote?.addEventListener("click", () => {
+    noteTitleInput.value = "";
+    noteBodyInput.value = "";
+    chrome.storage.local.remove([AUTOSAVE_NOTE_TITLE_KEY, AUTOSAVE_NOTE_BODY_KEY]);
+  });
+  btnSaveNoteItem?.addEventListener("click", saveNoteItem);
+  btnExportNotesMd?.addEventListener("click", async () => {
+    const store = await chrome.storage.local.get([SAVED_NOTES_KEY]);
+    const notes = store[SAVED_NOTES_KEY] || [];
+    const md = notes
+      .map((n) => `## ${n.title}\n*Saved: ${n.createdAt}*\n\n${n.body}`)
+      .join("\n\n---\n\n");
+    downloadMarkdown("selfmax-all-notes.md", md || "# SelfMax Notes\n(No saved notes)");
+  });
+
+  // Settings Actions
+  saveSettingsBtn?.addEventListener("click", saveAppSettings);
+}
+
+// Start
+document.addEventListener("DOMContentLoaded", init);

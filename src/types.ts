@@ -186,3 +186,45 @@ export interface ExtensionHandshakePayload {
   capturedAt?: number;
   [key: string]: unknown;
 }
+
+// Messaging Connectors Configuration
+export interface DiscordConnectorConfig {
+  webhookUrl: string;
+  botToken: string;
+  channelId?: string;
+  enabled: boolean;
+}
+
+export interface TelegramConnectorConfig {
+  botToken: string;
+  chatId: string;
+  enabled: boolean;
+}
+
+export interface SlackConnectorConfig {
+  webhookUrl: string;
+  channel?: string;
+  enabled: boolean;
+}
+
+export interface TwilioConnectorConfig {
+  accountSid: string;
+  authToken: string;
+  fromNumber: string;
+  webhookUrl?: string;
+  enabled: boolean;
+}
+
+export interface MessagingConnectorsConfig {
+  discord: DiscordConnectorConfig;
+  telegram: TelegramConnectorConfig;
+  slack: SlackConnectorConfig;
+  twilio: TwilioConnectorConfig;
+}
+
+export interface ConnectorStatusPill {
+  id: "discord" | "telegram" | "slack" | "twilio" | "email";
+  name: string;
+  configured: boolean;
+  status: "connected" | "standby" | "unconfigured";
+}

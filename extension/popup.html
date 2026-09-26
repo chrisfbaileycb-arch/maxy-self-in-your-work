@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>SelfMax Capsule Assistant</title>
+    <title>Self Maximizer - Persona &amp; Context Injector</title>
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
@@ -10,23 +10,57 @@
       <div class="logo-group">
         <img src="icon-48.png" width="26" height="26" alt="SelfMax" />
         <div>
-          <div class="title">SelfMax Capsule</div>
-          <div class="sub">Browser Agent &amp; Content Scraper</div>
+          <div class="title">Self Maximizer</div>
+          <div class="sub">Persona &amp; Context Injector</div>
         </div>
       </div>
       <span class="badge" id="session-badge">Checking...</span>
     </header>
 
+    <!-- Global Persona Injection Toggle Switch Banner -->
+    <div class="global-persona-banner" id="global-persona-banner">
+      <div class="global-persona-info">
+        <div class="global-persona-icon-wrap" id="global-persona-icon-wrap">
+          <span class="global-persona-icon" id="global-persona-icon">⚡</span>
+        </div>
+        <div class="global-persona-meta">
+          <div class="global-persona-title-row">
+            <span class="global-persona-title">Persona Injection</span>
+            <span class="badge-mini badge-active" id="global-persona-pill">ACTIVE</span>
+          </div>
+          <div class="global-persona-status" id="global-persona-status">
+            Injects into ChatGPT, Claude, Gemini &amp; AI Studio
+          </div>
+        </div>
+      </div>
+      <label
+        class="switch-toggle"
+        title="Quickly enable or disable persona injection without removing saved text"
+      >
+        <input type="checkbox" id="global-persona-toggle" checked />
+        <span class="switch-slider round"></span>
+      </label>
+    </div>
+
     <!-- Tab Bar -->
     <nav class="tabs">
-      <button class="tab-btn active" data-tab="tab-agent">⚡ Agent</button>
+      <button class="tab-btn active" data-tab="tab-persona">🎭 Persona</button>
+      <button class="tab-btn" data-tab="tab-agent">⚡ Agent</button>
       <button class="tab-btn" data-tab="tab-scraper">🔍 Scraper</button>
       <button class="tab-btn" data-tab="tab-notes">📝 Notes</button>
-      <button class="tab-btn" data-tab="tab-settings">⚙️ Engine</button>
+      <button class="tab-btn" data-tab="tab-byok">🔑 Keys</button>
+      <button class="tab-btn" data-tab="tab-settings">⚙️ Settings</button>
     </nav>
 
-    <!-- Tab 1: Fast Agent & Template Selector -->
-    <section id="tab-agent" class="tab-content active">
+    <!-- Tab 0: Master Persona & Context Injector -->
+    <section id="tab-persona" class="tab-content active">
+      <div id="persona-manager-container">
+        <!-- Rendered dynamically by persona-manager.js -->
+      </div>
+    </section>
+
+    <!-- Tab 1: Fast Agent & Template Selector & DOM Automation -->
+    <section id="tab-agent" class="tab-content">
       <!-- Template Selector for Initial Prompt -->
       <div class="field-header">
         <label for="template-select">Prompt Strategy / Template:</label>
@@ -64,10 +98,36 @@
 
       <div class="actions-row">
         <button id="btn-run-agent" class="primary-btn">⚡ Run Agent Check</button>
+        <button
+          id="btn-run-dom-agent"
+          class="secondary-btn"
+          title="Inspect active page and propose tool actions"
+        >
+          🤖 Page Action
+        </button>
         <button id="btn-sms" class="secondary-btn">💬 SMS (&lt;160c)</button>
       </div>
 
       <div id="ai-status" class="status-msg"></div>
+
+      <!-- Autonomous DOM Tool Action Human Confirmation Banner -->
+      <div id="dom-tool-proposal" class="scraped-meta-card hidden mt-2">
+        <div class="flex-between">
+          <strong class="text-xs text-primary">🤖 Proposed Page Action:</strong>
+          <span id="tool-name-badge" class="badge-mini">fill_input</span>
+        </div>
+        <p id="tool-rationale-text" class="text-xs mt-1 text-slate-700"></p>
+        <div
+          id="tool-details-text"
+          class="text-xs font-mono bg-slate-100 p-1.5 rounded mt-1 overflow-x-auto text-[11px]"
+        ></div>
+        <div class="actions-row mt-2">
+          <button id="btn-confirm-execute-tool" class="primary-btn" style="background: #16a34a">
+            ✅ Confirm &amp; Execute
+          </button>
+          <button id="btn-cancel-tool" class="secondary-btn">Cancel</button>
+        </div>
+      </div>
 
       <!-- AI Result Container -->
       <div id="result-container" class="result-box hidden">
@@ -164,60 +224,28 @@
       </div>
     </section>
 
-    <!-- Tab 4: Settings & Engine Mode -->
+    <!-- Tab 4: Bring Your Own Key (BYOK) Provider Keys -->
+    <section id="tab-byok" class="tab-content">
+      <div id="provider-keys-container">
+        <!-- Rendered dynamically by Provider Keys Settings Component (provider-keys.js) -->
+      </div>
+    </section>
+
+    <!-- Tab 5: Settings & SelfMax Sync -->
     <section id="tab-settings" class="tab-content">
       <div class="setting-group">
-        <label class="setting-label">AI Engine Mode</label>
-        <div class="radio-card">
-          <label class="radio-option">
-            <input type="radio" name="ai_mode" value="webchat" checked />
-            <div>
-              <strong>🌐 ChatGPT Web Session</strong>
-              <div class="opt-desc">Zero-config, uses active browser cookies</div>
-            </div>
-          </label>
-
-          <label class="radio-option">
-            <input type="radio" name="ai_mode" value="local" />
-            <div>
-              <strong>💻 Local LLM Server</strong>
-              <div class="opt-desc">LM Studio / Jan / Ollama at localhost</div>
-            </div>
-          </label>
-
-          <label class="radio-option">
-            <input type="radio" name="ai_mode" value="byok" />
-            <div>
-              <strong>🔑 Bring Your Own Key (BYOK)</strong>
-              <div class="opt-desc">OpenAI / OpenRouter API Key</div>
-            </div>
-          </label>
-        </div>
-      </div>
-
-      <div id="local-config" class="config-pane hidden">
         <label>
-          Local Endpoint URL
-          <input id="local-endpoint" type="text" placeholder="http://localhost:1234/v1" />
+          SelfMax Capsule Web App URL
+          <input
+            id="app-origin"
+            type="url"
+            placeholder="https://circlesapp.co"
+            class="single-input"
+          />
         </label>
-      </div>
-
-      <div id="byok-config" class="config-pane hidden">
-        <label>
-          API Key
-          <input id="byok-key" type="password" placeholder="sk-..." />
-        </label>
-        <label class="mt-1">
-          Custom Base URL (Optional)
-          <input id="byok-endpoint" type="text" placeholder="https://api.openai.com/v1" />
-        </label>
-      </div>
-
-      <div class="setting-group mt-2">
-        <label>
-          SelfMax App URL
-          <input id="app-origin" type="url" placeholder="https://circlesapp.co" />
-        </label>
+        <p class="hint mt-1">
+          Direct memory sync destination when capturing notes or chat context.
+        </p>
       </div>
 
       <button id="save-settings" class="primary-btn full-width mt-2">Save Settings</button>

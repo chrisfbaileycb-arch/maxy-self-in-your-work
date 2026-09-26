@@ -24,4 +24,3 @@
 
 3. **Supabase Initialization (`src/integrations/supabase/client.ts`)**:
    - Do NOT throw hard exceptions at module load time if Supabase environment variables are missing; use fallback placeholders so SSR rendering never crashes on startup.
-

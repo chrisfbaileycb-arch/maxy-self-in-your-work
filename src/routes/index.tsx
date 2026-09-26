@@ -9,6 +9,9 @@ import {
   Map,
   Heart,
   Scale,
+  Radio,
+  Bot,
+  Download,
 } from "lucide-react";
 import logo from "@/assets/selfmaxizer-icon-square.svg";
 
@@ -19,12 +22,13 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Stop re-explaining yourself to every AI. Self Maximizer captures, sorts, and hands your memory back as a paste-ready system prompt. 3-day free trial, then $9.95/month.",
+          "Stop re-explaining yourself to every AI. Self Maximizer captures, sorts, and hands your memory back as a paste-ready system prompt or dispatches via Discord, Telegram, Slack & Twilio. 3-day free trial, then $9.95/month.",
       },
       { property: "og:title", content: "Self Maximizer — One memory for every AI" },
       {
         property: "og:description",
-        content: "Cloud-private backup. AI-sorted. 3-day free trial, then $9.95/month.",
+        content:
+          "Cloud-private backup. AI-sorted. Client-side BYOK Browser Agent. 3-day free trial, then $9.95/month.",
       },
       { property: "og:url", content: "/" },
       { property: "og:image", content: "/og-image.png" },
@@ -77,7 +81,7 @@ function Landing() {
             className="mx-auto h-40 w-40 md:h-52 md:w-52 rounded-[24%] shadow-xl"
           />
           <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1 text-xs text-muted-foreground">
-            <Sparkles className="h-3 w-3" /> Built by Signal F Holdings LLC
+            <Sparkles className="h-3 w-3" /> Built by Signal F Holdings LLC · Manifest V3 BYOK Ready
           </div>
           <h1 className="mt-6 text-balance text-5xl font-bold tracking-tight md:text-6xl">
             Your Self inside,{" "}
@@ -100,6 +104,13 @@ function Landing() {
               className="inline-flex items-center rounded-md bg-primary px-6 py-3 text-base font-medium text-primary-foreground hover:bg-primary/90"
             >
               Start 3-day free trial
+            </Link>
+            <Link
+              to="/extension"
+              className="inline-flex items-center gap-2 rounded-md border border-input bg-card px-5 py-3 text-base font-medium hover:bg-accent"
+            >
+              <Download className="h-4 w-4 text-primary" />
+              Chrome Extension (.zip)
             </Link>
             <a
               href="#how-it-works"
@@ -125,17 +136,18 @@ function Landing() {
             <p className="mx-auto mt-4 max-w-2xl text-balance text-lg text-muted-foreground">
               Chat transcripts, emails, and text messages all ingest the same way — paste them in
               and Self Maximizer sorts what matters. Then export as a{" "}
-              <span className="font-semibold text-foreground">system prompt</span>, an{" "}
-              <span className="font-semibold text-foreground">email prompt</span>, or a{" "}
-              <span className="font-semibold text-foreground">text-message prompt</span> — tuned to
-              how each channel actually reads.
+              <span className="font-semibold text-foreground">system prompt</span>, dispatch to{" "}
+              <span className="font-semibold text-foreground">
+                Discord, Telegram, Slack, or Twilio
+              </span>
+              , or sync straight into your private browser agent.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4 text-sm text-muted-foreground">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1">
                 <Heart className="h-3.5 w-3.5 text-rose-400" /> Kindness-first tone
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1">
-                <Sparkles className="h-3.5 w-3.5 text-primary" /> Works with every AI
+                <Bot className="h-3.5 w-3.5 text-primary" /> BYOK Client-Side Agent
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1">
                 <ShieldCheck className="h-3.5 w-3.5 text-green-500" /> You control what's shared
@@ -151,6 +163,16 @@ function Landing() {
               Your memory. Your way. Sorted automatically.
             </h2>
             <div className="mt-12 grid gap-8 md:grid-cols-3">
+              <Feature
+                icon={<Bot className="h-5 w-5" />}
+                title="Pure Client-Side BYOK Agent"
+                body="Bring Your Own Key for Gemini, OpenAI, Claude, or OpenRouter. Zero middleman server proxies. Your browser executes structured DOM tools directly."
+              />
+              <Feature
+                icon={<Radio className="h-5 w-5" />}
+                title="Modular Communication Hub"
+                body="Connect real-time pipelines to Discord webhooks & bots, Telegram chats, Slack channels, and Twilio SMS without complex setup."
+              />
               <Feature
                 icon={<Sparkles className="h-5 w-5" />}
                 title="Automatic sorting"
@@ -186,16 +208,6 @@ function Landing() {
                 title="AI relationship map"
                 body="A visible, editable map of your identity, values, and workflow preferences. Drag nodes, edit any fact, and carry the whole map into every AI conversation."
               />
-              <Feature
-                icon={<Heart className="h-5 w-5" />}
-                title="Kindness Mode"
-                body="Set the tone you want every AI to use with you — warmth, patience, directness, humor. Saved as a real preference block at the top of your system prompt, not buried in fine print."
-              />
-              <Feature
-                icon={<Scale className="h-5 w-5" />}
-                title="Legal clarity"
-                body="Plain-English terms, a clear privacy policy, and a DPA on request. Your memory data is yours — exportable any time, deletable in one click, never sold, never used to train models."
-              />
             </div>
           </div>
         </section>
@@ -217,7 +229,8 @@ function Landing() {
               </p>
               <ul className="mt-6 space-y-2 text-sm">
                 <li>• Unlimited memories across personal + work buckets</li>
-                <li>• AI sorting included — no API key needed</li>
+                <li>• Pure Client-Side BYOK Browser Agent included</li>
+                <li>• Discord, Telegram, Slack, and Twilio SMS integrations</li>
                 <li>• Cloud-private backup (encrypted, RLS-enforced)</li>
                 <li>• MEMORY.md export, system-prompt clipboard</li>
                 <li>• 90-day project lifecycle triage</li>

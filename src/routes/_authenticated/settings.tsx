@@ -11,10 +11,19 @@ import {
   Download,
   Sparkles,
   ExternalLink,
+  MessageSquare,
+  Send,
+  Radio,
+  CheckCircle2,
+  AlertCircle,
+  Smartphone,
+  Bot,
+  Hash,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { AppHeader } from "@/components/AppHeader";
+import { PersonaManager } from "@/components/PersonaManager";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -29,6 +38,13 @@ import { createCustomerPortalSession } from "@/lib/payments.functions";
 import { usePaddleCheckout } from "@/hooks/usePaddleCheckout";
 import { getPushStatus, subscribeToPush, unsubscribeFromPush, type PushStatus } from "@/lib/push";
 import { sendTestPush } from "@/lib/push.functions";
+import {
+  loadMessagingConnectors,
+  saveMessagingConnectors,
+  testConnectorDispatch,
+  DEFAULT_CONNECTORS_CONFIG,
+} from "@/lib/push-config";
+import type { MessagingConnectorsConfig } from "@/types";
 
 const PRO_PRICE_ID = "circles_pro_monthly";
 
@@ -65,18 +81,29 @@ function Settings() {
   const [pushStatus, setPushStatus] = useState<PushStatus>("prompt");
   const [pushBusy, setPushBusy] = useState(false);
 
+  // Messaging Connectors State
+  const [connectors, setConnectors] =
+    useState<MessagingConnectorsConfig>(DEFAULT_CONNECTORS_CONFIG);
+  const [connectorsSaving, setConnectorsSaving] = useState(false);
+  const [activeTestService, setActiveTestService] = useState<string | null>(null);
+
   useEffect(() => {
     setPushStatus(getPushStatus());
+    setConnectors(loadMessagingConnectors());
     (async () => {
-      const [profile, subscription, usageData] = await Promise.all([
-        runProfile(),
-        runSub(),
-        runUsage(),
-      ]);
-      setDisplayName(profile?.display_name ?? "");
-      setPaused(!!profile?.pause_recording);
-      setSub(subscription);
-      setUsage(usageData);
+      try {
+        const [profile, subscription, usageData] = await Promise.all([
+          runProfile(),
+          runSub(),
+          runUsage(),
+        ]);
+        setDisplayName(profile?.display_name ?? "");
+        setPaused(!!profile?.pause_recording);
+        setSub(subscription);
+        setUsage(usageData);
+      } catch (err) {
+        console.warn("Settings data loading fallback:", err);
+      }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -202,6 +229,35 @@ function Settings() {
     }
   }
 
+  // Messaging Connector Handlers
+  function handleSaveConnectors() {
+    setConnectorsSaving(true);
+    try {
+      saveMessagingConnectors(connectors);
+      toast.success("Communication Hub connectors updated.");
+    } catch {
+      toast.error("Failed to save connector configuration.");
+    } finally {
+      setConnectorsSaving(false);
+    }
+  }
+
+  async function handleTestConnector(service: "discord" | "telegram" | "slack" | "twilio") {
+    setActiveTestService(service);
+    try {
+      const res = await testConnectorDispatch(service, connectors);
+      if (res.ok) {
+        toast.success(res.message);
+      } else {
+        toast.error(res.message);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Dispatch test failed");
+    } finally {
+      setActiveTestService(null);
+    }
+  }
+
   const isPro = !!sub?.isPro;
   const willCancel = isPro && !!sub?.cancel_at_period_end;
   const subLabel = isPro
@@ -221,19 +277,361 @@ function Settings() {
       })
     : null;
 
+  // Active status checks for pills
+  const isDiscordActive = Boolean(connectors.discord.webhookUrl || connectors.discord.botToken);
+  const isTelegramActive = Boolean(connectors.telegram.botToken && connectors.telegram.chatId);
+  const isSlackActive = Boolean(connectors.slack.webhookUrl);
+  const isTwilioActive = Boolean(
+    connectors.twilio.webhookUrl ||
+    (connectors.twilio.accountSid && connectors.twilio.authToken && connectors.twilio.fromNumber),
+  );
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground">
       <PaymentTestModeBanner />
       <AppHeader />
       <main className="mx-auto max-w-6xl px-6 py-10 space-y-8">
         <div>
           <h1 className="text-3xl font-bold">Settings</h1>
           <p className="mt-1 text-muted-foreground">
-            Manage your account, exports, and subscription.
+            Manage your account, master persona injection, messaging pipelines, exports, and
+            subscription.
           </p>
         </div>
 
+        {/* MASTER PERSONA MANAGER */}
+        <PersonaManager />
+
+        {/* COMMUNICATION HUB */}
+        <section className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border/60 pb-5">
+            <div>
+              <div className="flex items-center gap-2">
+                <Radio className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-bold">Communication Hub</h2>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Expand beyond email — connect real-time webhook and bot channels for automated
+                prompt dispatch, memory broadcasts, and standups.
+              </p>
+            </div>
+
+            {/* Service Status Pills */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium border ${
+                  isDiscordActive
+                    ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/30"
+                    : "bg-muted text-muted-foreground border-border"
+                }`}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${isDiscordActive ? "bg-indigo-400" : "bg-muted-foreground/40"}`}
+                />
+                Discord
+              </span>
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium border ${
+                  isTelegramActive
+                    ? "bg-sky-500/10 text-sky-400 border-sky-500/30"
+                    : "bg-muted text-muted-foreground border-border"
+                }`}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${isTelegramActive ? "bg-sky-400" : "bg-muted-foreground/40"}`}
+                />
+                Telegram
+              </span>
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium border ${
+                  isSlackActive
+                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                    : "bg-muted text-muted-foreground border-border"
+                }`}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${isSlackActive ? "bg-emerald-400" : "bg-muted-foreground/40"}`}
+                />
+                Slack
+              </span>
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium border ${
+                  isTwilioActive
+                    ? "bg-rose-500/10 text-rose-400 border-rose-500/30"
+                    : "bg-muted text-muted-foreground border-border"
+                }`}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${isTwilioActive ? "bg-rose-400" : "bg-muted-foreground/40"}`}
+                />
+                Twilio / SMS
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                Web &amp; Email
+              </span>
+            </div>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* 1. Discord Connector */}
+            <div className="rounded-xl border border-border/80 bg-background/50 p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Bot className="h-4 w-4 text-indigo-400" />
+                  <span className="font-semibold text-sm">Discord Channel &amp; Bot</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleTestConnector("discord")}
+                  disabled={activeTestService === "discord"}
+                  className="rounded-md border border-input bg-card px-2.5 py-1 text-xs font-medium hover:bg-accent disabled:opacity-50 inline-flex items-center gap-1"
+                >
+                  <Send className="h-3 w-3" />
+                  {activeTestService === "discord" ? "Sending..." : "Test Webhook"}
+                </button>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Webhook URL (Broadcasting)
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://discord.com/api/webhooks/..."
+                  value={connectors.discord.webhookUrl}
+                  onChange={(e) =>
+                    setConnectors({
+                      ...connectors,
+                      discord: { ...connectors.discord, webhookUrl: e.target.value },
+                    })
+                  }
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Bot Token (Memory Sync)
+                </label>
+                <input
+                  type="password"
+                  placeholder="Bot token for bidirectional read/write..."
+                  value={connectors.discord.botToken}
+                  onChange={(e) =>
+                    setConnectors({
+                      ...connectors,
+                      discord: { ...connectors.discord, botToken: e.target.value },
+                    })
+                  }
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs font-mono"
+                />
+              </div>
+            </div>
+
+            {/* 2. Telegram Connector */}
+            <div className="rounded-xl border border-border/80 bg-background/50 p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Send className="h-4 w-4 text-sky-400" />
+                  <span className="font-semibold text-sm">Telegram Dispatch</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleTestConnector("telegram")}
+                  disabled={activeTestService === "telegram"}
+                  className="rounded-md border border-input bg-card px-2.5 py-1 text-xs font-medium hover:bg-accent disabled:opacity-50 inline-flex items-center gap-1"
+                >
+                  <Send className="h-3 w-3" />
+                  {activeTestService === "telegram" ? "Sending..." : "Test Prompt"}
+                </button>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Bot Token</label>
+                <input
+                  type="password"
+                  placeholder="123456789:ABCdef..."
+                  value={connectors.telegram.botToken}
+                  onChange={(e) =>
+                    setConnectors({
+                      ...connectors,
+                      telegram: { ...connectors.telegram, botToken: e.target.value },
+                    })
+                  }
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Chat ID</label>
+                <input
+                  type="text"
+                  placeholder="@yourchannel or numeric chat_id"
+                  value={connectors.telegram.chatId}
+                  onChange={(e) =>
+                    setConnectors({
+                      ...connectors,
+                      telegram: { ...connectors.telegram, chatId: e.target.value },
+                    })
+                  }
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs font-mono"
+                />
+              </div>
+            </div>
+
+            {/* 3. Slack Connector */}
+            <div className="rounded-xl border border-border/80 bg-background/50 p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Hash className="h-4 w-4 text-emerald-400" />
+                  <span className="font-semibold text-sm">Slack Standups &amp; Summaries</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleTestConnector("slack")}
+                  disabled={activeTestService === "slack"}
+                  className="rounded-md border border-input bg-card px-2.5 py-1 text-xs font-medium hover:bg-accent disabled:opacity-50 inline-flex items-center gap-1"
+                >
+                  <Send className="h-3 w-3" />
+                  {activeTestService === "slack" ? "Sending..." : "Test Standup"}
+                </button>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Incoming Webhook URL
+                </label>
+                <input
+                  type="url"
+                  placeholder="https://hooks.slack.com/services/..."
+                  value={connectors.slack.webhookUrl}
+                  onChange={(e) =>
+                    setConnectors({
+                      ...connectors,
+                      slack: { ...connectors.slack, webhookUrl: e.target.value },
+                    })
+                  }
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Target Channel / Workspace (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="#team-daily-standup"
+                  value={connectors.slack.channel || ""}
+                  onChange={(e) =>
+                    setConnectors({
+                      ...connectors,
+                      slack: { ...connectors.slack, channel: e.target.value },
+                    })
+                  }
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs"
+                />
+              </div>
+            </div>
+
+            {/* 4. Twilio / SMS Connector */}
+            <div className="rounded-xl border border-border/80 bg-background/50 p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Smartphone className="h-4 w-4 text-rose-400" />
+                  <span className="font-semibold text-sm">Twilio / SMS Generator (&lt;160c)</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleTestConnector("twilio")}
+                  disabled={activeTestService === "twilio"}
+                  className="rounded-md border border-input bg-card px-2.5 py-1 text-xs font-medium hover:bg-accent disabled:opacity-50 inline-flex items-center gap-1"
+                >
+                  <Send className="h-3 w-3" />
+                  {activeTestService === "twilio" ? "Validating..." : "Test SMS"}
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Account SID</label>
+                  <input
+                    type="password"
+                    placeholder="AC..."
+                    value={connectors.twilio.accountSid}
+                    onChange={(e) =>
+                      setConnectors({
+                        ...connectors,
+                        twilio: { ...connectors.twilio, accountSid: e.target.value },
+                      })
+                    }
+                    className="mt-1 w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Auth Token</label>
+                  <input
+                    type="password"
+                    placeholder="Auth token..."
+                    value={connectors.twilio.authToken}
+                    onChange={(e) =>
+                      setConnectors({
+                        ...connectors,
+                        twilio: { ...connectors.twilio, authToken: e.target.value },
+                      })
+                    }
+                    className="mt-1 w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs font-mono"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    From Phone Number
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="+1234567890"
+                    value={connectors.twilio.fromNumber}
+                    onChange={(e) =>
+                      setConnectors({
+                        ...connectors,
+                        twilio: { ...connectors.twilio, fromNumber: e.target.value },
+                      })
+                    }
+                    className="mt-1 w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Webhook / Relay URL (Optional)
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://api.twilio.com/..."
+                    value={connectors.twilio.webhookUrl || ""}
+                    onChange={(e) =>
+                      setConnectors({
+                        ...connectors,
+                        twilio: { ...connectors.twilio, webhookUrl: e.target.value },
+                      })
+                    }
+                    className="mt-1 w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs font-mono"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <button
+              type="button"
+              onClick={handleSaveConnectors}
+              disabled={connectorsSaving}
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              <Save className="h-4 w-4" />
+              {connectorsSaving ? "Saving..." : "Save Communication Hub Settings"}
+            </button>
+          </div>
+        </section>
+
         <div className="grid gap-6 md:grid-cols-2">
+          {/* PROFILE SECTION */}
           <section className="rounded-2xl border border-border bg-card p-6 space-y-4">
             <h2 className="font-semibold flex items-center gap-2">
               <User className="h-4 w-4 text-primary" /> Profile
@@ -269,6 +667,7 @@ function Settings() {
             )}
           </section>
 
+          {/* SUBSCRIPTION SECTION */}
           <section className="rounded-2xl border border-border bg-card p-6 space-y-4">
             <h2 className="font-semibold flex items-center gap-2">
               <CreditCard className="h-4 w-4 text-primary" /> Subscription
@@ -340,6 +739,7 @@ function Settings() {
             </p>
           </section>
 
+          {/* USAGE SECTION */}
           <section className="rounded-2xl border border-border bg-card p-6 space-y-4">
             <h2 className="font-semibold flex items-center gap-2">
               <BarChart3 className="h-4 w-4 text-primary" /> Usage this month
@@ -360,6 +760,7 @@ function Settings() {
             </div>
           </section>
 
+          {/* PUSH NOTIFICATIONS */}
           <section className="rounded-2xl border border-border bg-card p-6 space-y-4">
             <h2 className="font-semibold flex items-center gap-2">
               <Bell className="h-4 w-4 text-primary" /> Push notifications
@@ -398,6 +799,7 @@ function Settings() {
             </div>
           </section>
 
+          {/* EXPORTS SECTION */}
           <section className="md:col-span-2 rounded-2xl border border-border bg-card p-6 space-y-4">
             <h2 className="font-semibold">Exports</h2>
             <div className="flex flex-wrap gap-2">
